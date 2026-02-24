@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="enrol/mentorsubscription/db" VERSION="20260223" COMMENT="XMLDB schema for enrol_mentorsubscription"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+
+    <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_sub_types                                    -->
+    <!-- Global subscription type templates configured by admin.            -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_sub_types" COMMENT="Global subscription type templates (monthly, annual)">
+      <FIELDS>
+        <FIELD NAME="id"                 TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="name"               TYPE="char"   LENGTH="100" NOTNULL="true"  SEQUENCE="false" COMMENT="e.g. Monthly, Annual"/>
+        <FIELD NAME="billing_cycle"      TYPE="char"   LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="monthly | annual"/>
+        <FIELD NAME="price"              TYPE="number" LENGTH="10"  NOTNULL="true"  SEQUENCE="false" DECIMALS="2" COMMENT="Base public price"/>
+        <FIELD NAME="default_max_mentees" TYPE="int"   LENGTH="5"   NOTNULL="true"  SEQUENCE="false" DEFAULT="10" COMMENT="Base mentee limit"/>
+        <FIELD NAME="stripe_price_id"    TYPE="char"   LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="Stripe Price object ID"/>
+        <FIELD NAME="description"        TYPE="text"               NOTNULL="false" SEQUENCE="false" COMMENT="Visible description for mentors"/>
+        <FIELD NAME="features"           TYPE="text"               NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of feature strings for UI"/>
+        <FIELD NAME="is_active"          TYPE="int"    LENGTH="1"   NOTNULL="true"  SEQUENCE="false" DEFAULT="1" COMMENT="1=active, 0=disabled"/>
+        <FIELD NAME="sort_order"         TYPE="int"    LENGTH="3"   NOTNULL="true"  SEQUENCE="false" DEFAULT="0" COMMENT="UI display order"/>
+        <FIELD NAME="timecreated"        TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+        <FIELD NAME="timemodified"       TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="idx_active_sort" UNIQUE="false" FIELDS="is_active, sort_order" COMMENT="Efficient listing of active types ordered for UI"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_sub_overrides                                -->
+    <!-- Per-mentor price/limit overrides (convenios) set by admin.         -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_sub_overrides" COMMENT="Per-mentor price and limit overrides for subscription types">
+      <FIELDS>
+        <FIELD NAME="id"                     TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="userid"                 TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Mentor user ID (mdl_user.id)"/>
+        <FIELD NAME="subtypeid"              TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="FK to enrol_mentorsub_sub_types.id"/>
+        <FIELD NAME="price_override"         TYPE="number" LENGTH="10"  NOTNULL="false" SEQUENCE="false" DECIMALS="2" COMMENT="NULL = use type price"/>
+        <FIELD NAME="max_mentees_override"   TYPE="int"    LENGTH="5"   NOTNULL="false" SEQUENCE="false" COMMENT="NULL = use type default_max_mentees"/>
+        <FIELD NAME="stripe_price_id_override" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Custom Stripe Price ID for this mentor"/>
+        <FIELD NAME="admin_notes"            TYPE="text"               NOTNULL="false" SEQUENCE="false" COMMENT="Internal reason for the override"/>
+        <FIELD NAME="valid_from"             TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Unix timestamp: override starts"/>
+        <FIELD NAME="valid_until"            TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="NULL = indefinite; set for temporary deals"/>
+        <FIELD NAME="created_by"             TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Admin user ID who created the override"/>
+        <FIELD NAME="timecreated"            TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+        <FIELD NAME="timemodified"           TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"    TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_user"    TYPE="foreign" FIELDS="userid"    REFTABLE="user"                        REFFIELDS="id"/>
+        <KEY NAME="fk_subtype" TYPE="foreign" FIELDS="subtypeid" REFTABLE="enrol_mentorsub_sub_types"   REFFIELDS="id"/>
+        <KEY NAME="fk_creator" TYPE="foreign" FIELDS="created_by" REFTABLE="user"                       REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="idx_userid_subtype"     UNIQUE="false" FIELDS="userid, subtypeid"             COMMENT="Lookup override for a specific mentor+type"/>
+        <INDEX NAME="idx_userid_valid_dates" UNIQUE="false" FIELDS="userid, valid_from, valid_until" COMMENT="Efficient override chain resolution"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_subscriptions                                -->
+    <!-- Immutable ledger: one record per billing cycle per mentor.         -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_subscriptions" COMMENT="Immutable billing ledger: one record per cycle per mentor">
+      <FIELDS>
+        <FIELD NAME="id"                      TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="userid"                  TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Mentor user ID"/>
+        <FIELD NAME="subtypeid"               TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Snapshot of subscription type"/>
+        <FIELD NAME="overrideid"              TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="Override applied this cycle (NULL if none)"/>
+        <FIELD NAME="billed_price"            TYPE="number" LENGTH="10"  NOTNULL="true"  SEQUENCE="false" DECIMALS="2" COMMENT="Immutable snapshot: actual price charged"/>
+        <FIELD NAME="billed_max_mentees"      TYPE="int"    LENGTH="5"   NOTNULL="true"  SEQUENCE="false" COMMENT="Immutable snapshot: mentee limit this cycle"/>
+        <FIELD NAME="billing_cycle"           TYPE="char"   LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="monthly | annual"/>
+        <FIELD NAME="status"                  TYPE="char"   LENGTH="20"  NOTNULL="true"  SEQUENCE="false" COMMENT="pending|active|past_due|superseded|cancelled|expired"/>
+        <FIELD NAME="stripe_subscription_id"  TYPE="char"   LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="sub_xxxxx"/>
+        <FIELD NAME="stripe_customer_id"      TYPE="char"   LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="cus_xxxxx"/>
+        <FIELD NAME="stripe_payment_intent_id" TYPE="char"  LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="pi_xxxxx — payment traceability"/>
+        <FIELD NAME="stripe_invoice_id"       TYPE="char"   LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="in_xxxxx — Stripe invoice"/>
+        <FIELD NAME="stripe_price_id_used"    TYPE="char"   LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="Actual Price ID used this cycle"/>
+        <FIELD NAME="period_start"            TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Billing period start (Unix)"/>
+        <FIELD NAME="period_end"              TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Billing period end (Unix)"/>
+        <FIELD NAME="cancelled_at"            TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="Cancellation timestamp (if applicable)"/>
+        <FIELD NAME="cancel_at_period_end"    TYPE="int"    LENGTH="1"   NOTNULL="true"  SEQUENCE="false" DEFAULT="0" COMMENT="1=cancel at period end without renewal"/>
+        <FIELD NAME="timecreated"             TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+        <FIELD NAME="timemodified"            TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"      TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_user"      TYPE="foreign" FIELDS="userid"     REFTABLE="user"                       REFFIELDS="id"/>
+        <KEY NAME="fk_subtype"   TYPE="foreign" FIELDS="subtypeid"  REFTABLE="enrol_mentorsub_sub_types"  REFFIELDS="id"/>
+        <KEY NAME="fk_override"  TYPE="foreign" FIELDS="overrideid" REFTABLE="enrol_mentorsub_sub_overrides" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="idx_userid_status"           UNIQUE="false" FIELDS="userid, status"              COMMENT="Active subscription lookup per mentor"/>
+        <INDEX NAME="idx_status_period_end"        UNIQUE="false" FIELDS="status, period_end"          COMMENT="Scheduled task: find expiring subscriptions"/>
+        <INDEX NAME="idx_stripe_subscription_id"  UNIQUE="false" FIELDS="stripe_subscription_id"      COMMENT="Webhook lookup by Stripe subscription ID"/>
+        <INDEX NAME="idx_stripe_payment_intent"   UNIQUE="false" FIELDS="stripe_payment_intent_id"    COMMENT="Payment reconciliation"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_mentees                                      -->
+    <!-- Mentees assigned to each mentor; controls active/inactive access.  -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_mentees" COMMENT="Mentees assigned to each mentor with active/inactive access control">
+      <FIELDS>
+        <FIELD NAME="id"             TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="mentorid"       TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="false" COMMENT="Mentor user ID"/>
+        <FIELD NAME="menteeid"       TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="false" COMMENT="Mentee user ID — UNIQUE system-wide"/>
+        <FIELD NAME="subscriptionid" TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="false" COMMENT="Active subscription cycle at time of registration"/>
+        <FIELD NAME="is_active"      TYPE="int" LENGTH="1"  NOTNULL="true"  SEQUENCE="false" DEFAULT="1" COMMENT="1=enrolled, 0=unenrolled"/>
+        <FIELD NAME="timecreated"    TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="false"/>
+        <FIELD NAME="timemodified"   TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"           TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_mentor"         TYPE="foreign" FIELDS="mentorid"       REFTABLE="user"                          REFFIELDS="id"/>
+        <KEY NAME="fk_mentee"         TYPE="foreign" FIELDS="menteeid"       REFTABLE="user"                          REFFIELDS="id"/>
+        <KEY NAME="fk_subscription"   TYPE="foreign" FIELDS="subscriptionid" REFTABLE="enrol_mentorsub_subscriptions" REFFIELDS="id"/>
+        <KEY NAME="uq_mentor_mentee"  TYPE="unique"  FIELDS="mentorid, menteeid"  COMMENT="No duplicate mentor-mentee pairs"/>
+        <KEY NAME="uq_mentee"         TYPE="unique"  FIELDS="menteeid"             COMMENT="A mentee can have only ONE mentor system-wide"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="idx_mentorid_active" UNIQUE="false" FIELDS="mentorid, is_active" COMMENT="Efficient COUNT of active mentees per mentor"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_courses                                      -->
+    <!-- Courses included in the subscription, managed by admin.            -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_courses" COMMENT="Courses included in the mentor subscription program">
+      <FIELDS>
+        <FIELD NAME="id"        TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="courseid"  TYPE="int" LENGTH="10" NOTNULL="true"  SEQUENCE="false" COMMENT="FK to mdl_course.id"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="5"  NOTNULL="true"  SEQUENCE="false" DEFAULT="0" COMMENT="Display order"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"    TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_course"  TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
+        <KEY NAME="uq_courseid" TYPE="unique" FIELDS="courseid" COMMENT="No duplicate courses in the program"/>
+      </KEYS>
+    </TABLE>
+
+    <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_notifications                                -->
+    <!-- Deduplication log for outgoing notifications.                      -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_notifications" COMMENT="Notification deduplication log — prevents duplicate messages">
+      <FIELDS>
+        <FIELD NAME="id"             TYPE="int"  LENGTH="10" NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="subscriptionid" TYPE="int"  LENGTH="10" NOTNULL="true"  SEQUENCE="false" COMMENT="FK to enrol_mentorsub_subscriptions.id"/>
+        <FIELD NAME="type"           TYPE="char" LENGTH="50" NOTNULL="true"  SEQUENCE="false" COMMENT="e.g. expiry_warning"/>
+        <FIELD NAME="days_before"    TYPE="int"  LENGTH="3"  NOTNULL="true"  SEQUENCE="false" COMMENT="N days before expiry this notification was sent"/>
+        <FIELD NAME="timesent"       TYPE="int"  LENGTH="10" NOTNULL="true"  SEQUENCE="false" COMMENT="Unix timestamp of send"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"          TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_subscription"  TYPE="foreign" FIELDS="subscriptionid" REFTABLE="enrol_mentorsub_subscriptions" REFFIELDS="id"/>
+        <KEY NAME="uq_dedup"         TYPE="unique"  FIELDS="subscriptionid, type, days_before" COMMENT="Prevents duplicate notification per event+threshold"/>
+      </KEYS>
+    </TABLE>
+
+  </TABLES>
+</XMLDB>
