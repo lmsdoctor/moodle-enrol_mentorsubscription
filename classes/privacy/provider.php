@@ -103,8 +103,23 @@ class provider implements
      * @return contextlist
      */
     public static function get_contexts_for_userid(int $userid): contextlist {
-        // TODO M-6.6: Return CONTEXT_SYSTEM if user has subscriptions or mentee records.
-        return new contextlist();
+        global $DB;
+
+        $contextlist = new contextlist();
+
+        $hasSub = $DB->record_exists('enrol_mentorsub_subscriptions', ['userid' => $userid]);
+        $hasMentee = $DB->record_exists_select(
+            'enrol_mentorsub_mentees',
+            'mentorid = :mid OR menteeid = :mid2',
+            ['mid' => $userid, 'mid2' => $userid]
+        );
+        $hasOverride = $DB->record_exists('enrol_mentorsub_sub_overrides', ['userid' => $userid]);
+
+        if ($hasSub || $hasMentee || $hasOverride) {
+            $contextlist->add_system_context();
+        }
+
+        return $contextlist;
     }
 
     /**
@@ -114,7 +129,54 @@ class provider implements
      * @return void
      */
     public static function export_user_data(approved_contextlist $contextlist): void {
-        // TODO M-6.6: Export subscription, mentee and notification records.
+        global $DB;
+
+        $userid = (int) $contextlist->get_user()->id;
+
+        // Verify CONTEXT_SYSTEM is included.
+        $hasSystem = false;
+        foreach ($contextlist->get_contexts() as $ctx) {
+            if ($ctx->contextlevel === CONTEXT_SYSTEM) {
+                $hasSystem = true;
+                break;
+            }
+        }
+        if (!$hasSystem) {
+            return;
+        }
+
+        $path = [get_string('pluginname', 'enrol_mentorsubscription')];
+
+        // Export subscriptions.
+        $subs = $DB->get_records('enrol_mentorsub_subscriptions', ['userid' => $userid]);
+        foreach ($subs as $sub) {
+            // Remove internal Stripe token data before exporting.
+            unset($sub->stripe_customer_id, $sub->stripe_subscription_id,
+                  $sub->stripe_payment_intent_id, $sub->stripe_invoice_id);
+            \core_privacy\local\request\writer::with_context(
+                \context_system::instance()
+            )->export_data(array_merge($path, ['subscription_' . $sub->id]), $sub);
+        }
+
+        // Export mentee relationships (as mentor or mentee).
+        $mentees = $DB->get_records_select(
+            'enrol_mentorsub_mentees',
+            'mentorid = :mid OR menteeid = :mid2',
+            ['mid' => $userid, 'mid2' => $userid]
+        );
+        foreach ($mentees as $r) {
+            \core_privacy\local\request\writer::with_context(
+                \context_system::instance()
+            )->export_data(array_merge($path, ['mentee_' . $r->id]), $r);
+        }
+
+        // Export overrides (as the target mentor).
+        $overrides = $DB->get_records('enrol_mentorsub_sub_overrides', ['userid' => $userid]);
+        foreach ($overrides as $ov) {
+            \core_privacy\local\request\writer::with_context(
+                \context_system::instance()
+            )->export_data(array_merge($path, ['override_' . $ov->id]), $ov);
+        }
     }
 
     /**
@@ -124,7 +186,31 @@ class provider implements
      * @return void
      */
     public static function delete_data_for_user(approved_contextlist $contextlist): void {
-        // TODO M-6.6: Anonymise or delete records referencing this user.
+        global $DB;
+
+        $userid = (int) $contextlist->get_user()->id;
+
+        // Anonymise subscriptions: null out all Stripe identifiers.
+        $DB->set_field('enrol_mentorsub_subscriptions', 'stripe_customer_id',       null, ['userid' => $userid]);
+        $DB->set_field('enrol_mentorsub_subscriptions', 'stripe_subscription_id',   null, ['userid' => $userid]);
+        $DB->set_field('enrol_mentorsub_subscriptions', 'stripe_payment_intent_id', null, ['userid' => $userid]);
+        $DB->set_field('enrol_mentorsub_subscriptions', 'stripe_invoice_id',        null, ['userid' => $userid]);
+
+        // Delete mentee relationship records involving this user.
+        $DB->delete_records_select(
+            'enrol_mentorsub_mentees',
+            'mentorid = :mid OR menteeid = :mid2',
+            ['mid' => $userid, 'mid2' => $userid]
+        );
+
+        // Delete notification logs for subscriptions owned by this user.
+        $subIds = $DB->get_fieldset_select(
+            'enrol_mentorsub_subscriptions', 'id', 'userid = :uid', ['uid' => $userid]
+        );
+        if (!empty($subIds)) {
+            list($insql, $inparams) = $DB->get_in_or_equal($subIds);
+            $DB->delete_records_select('enrol_mentorsub_notifications', "subscriptionid $insql", $inparams);
+        }
     }
 
     /**
@@ -135,6 +221,14 @@ class provider implements
      * @return void
      */
     public static function delete_data_for_all_users_in_context(\context $context): void {
-        // TODO M-6.6: Clean up if context contains plugin data.
+        // This plugin stores all data at CONTEXT_SYSTEM level only.
+        // Deletion is only triggered if the entire system context is reset,
+        // which does not occur during normal Moodle operation.
+        if ($context->contextlevel !== CONTEXT_SYSTEM) {
+            return;
+        }
+        // Full data wipe is handled on a per-user basis via delete_data_for_user().
+        // We deliberately do not bulk-delete billing records as they may be
+        // required for financial auditing purposes.
     }
 }
