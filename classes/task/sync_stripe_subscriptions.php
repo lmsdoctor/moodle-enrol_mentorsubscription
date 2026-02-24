@@ -58,8 +58,62 @@ class sync_stripe_subscriptions extends \core\task\scheduled_task {
      * @return void
      */
     public function execute(): void {
-        // TODO M-5.6: Retrieve active/past_due subscriptions, call Stripe API,
-        // reconcile status and trigger actions on mismatch.
-        mtrace('enrol_mentorsubscription: sync_stripe_subscriptions — stub executed.');
+        global $DB;
+
+        $secret = get_config('enrol_mentorsubscription', 'stripe_secret_key');
+        if (empty($secret)) {
+            mtrace('enrol_mentorsubscription: sync_stripe_subscriptions — Stripe secret key not configured; skipping.');
+            return;
+        }
+
+        require_once(__DIR__ . '/../../../vendor/autoload.php');
+        $stripe = new \Stripe\StripeClient($secret);
+
+        // Fetch all local subscriptions that still appear live.
+        $locals = $DB->get_records_select(
+            'enrol_mentorsub_subscriptions',
+            "status IN ('active','past_due') AND stripe_subscription_id IS NOT NULL"
+        );
+
+        if (empty($locals)) {
+            mtrace('enrol_mentorsubscription: sync_stripe_subscriptions — nothing to sync.');
+            return;
+        }
+
+        $subManager = new \enrol_mentorsubscription\subscription\subscription_manager();
+        $synced     = 0;
+        $expired    = 0;
+
+        foreach ($locals as $local) {
+            try {
+                $stripeSub = $stripe->subscriptions->retrieve($local->stripe_subscription_id);
+            } catch (\Stripe\Exception\ApiErrorException $e) {
+                mtrace("  [WARN] Could not retrieve {$local->stripe_subscription_id}: {$e->getMessage()}");
+                continue;
+            }
+
+            $stripeStatus = $stripeSub->status; // active | past_due | canceled | unpaid | trialing
+
+            // Map Stripe status to local status.
+            if (in_array($stripeStatus, ['canceled', 'unpaid'], true)
+                    && in_array($local->status, ['active', 'past_due'], true)) {
+                // Stripe subscription gone — expire locally.
+                $subManager->expire_subscription((int) $local->id);
+                $expired++;
+                mtrace("  Expired subscription {$local->id} (stripe: {$local->stripe_subscription_id}).");
+
+            } elseif ($stripeStatus === 'past_due' && $local->status === 'active') {
+                $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'past_due', ['id' => $local->id]);
+                $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', time(), ['id' => $local->id]);
+                $synced++;
+
+            } elseif ($stripeStatus === 'active' && $local->status === 'past_due') {
+                $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'active', ['id' => $local->id]);
+                $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', time(), ['id' => $local->id]);
+                $synced++;
+            }
+        }
+
+        mtrace("enrol_mentorsubscription: sync_stripe_subscriptions — {$synced} updated, {$expired} expired.");
     }
 }

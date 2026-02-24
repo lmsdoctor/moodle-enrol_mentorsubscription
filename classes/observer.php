@@ -46,8 +46,8 @@ class observer {
      * @return void
      */
     public static function mentee_enrolled(\enrol_mentorsubscription\event\mentee_enrolled $event): void {
-        // TODO M-5.4: Send notification_manager::notify_mentee_enrolled().
-        debugging('observer::mentee_enrolled fired for menteeid=' . $event->relateduserid, DEBUG_DEVELOPER);
+        (new \enrol_mentorsubscription\notification_manager())
+            ->notify_mentee_enrolled((int) $event->userid, (int) $event->relateduserid);
     }
 
     /**
@@ -60,8 +60,8 @@ class observer {
      * @return void
      */
     public static function mentee_unenrolled(\enrol_mentorsubscription\event\mentee_unenrolled $event): void {
-        // TODO M-5.5: Send notification_manager::notify_mentee_deactivated().
-        debugging('observer::mentee_unenrolled fired for menteeid=' . $event->relateduserid, DEBUG_DEVELOPER);
+        (new \enrol_mentorsubscription\notification_manager())
+            ->notify_mentee_deactivated((int) $event->relateduserid, (int) $event->userid);
     }
 
     /**
@@ -74,7 +74,9 @@ class observer {
      * @return void
      */
     public static function mentee_status_changed(\enrol_mentorsubscription\event\mentee_status_changed $event): void {
-        // TODO M-5.5: Conditional notification based on $event->other['is_active'].
-        debugging('observer::mentee_status_changed fired for menteeid=' . $event->relateduserid, DEBUG_DEVELOPER);
+        if (isset($event->other['is_active']) && (int) $event->other['is_active'] === 0) {
+            (new \enrol_mentorsubscription\notification_manager())
+                ->notify_mentee_deactivated((int) $event->relateduserid, (int) $event->userid);
+        }
     }
 }

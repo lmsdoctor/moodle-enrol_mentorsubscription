@@ -188,3 +188,22 @@ $string['mentee_search']               = 'Search users';
 $string['parentrole']                  = 'Mentor (Parent)';
 $string['parentrole_desc']             = 'Grants mentors access to their mentees\' grades and profile data via the Moodle Parent Role mechanism.';
 $string['cannotcreateparentrole']      = 'Could not create the parent role. Please check Moodle role configuration.';
+
+// -------------------------------------------------------------------------
+// Notification messages
+// -------------------------------------------------------------------------
+$string['notify_expiry_warning_subject']         = 'Your mentor subscription expires in {$a->days} day(s)';
+$string['notify_expiry_warning_body']            = 'Your Mentor Subscription will expire in {$a->days} day(s) on {$a->date}.
+
+To continue supporting your mentees without interruption, please renew your subscription at: {$a->siteurl}
+
+If you have already renewed, please disregard this message.';
+
+$string['notify_mentee_enrolled_mentor_subject'] = 'Mentee {$a->name} added to your list';
+$string['notify_mentee_enrolled_mentor_body']    = '{$a->name} has been successfully added as your mentee. You can now view their progress and courses from your mentor dashboard.';
+
+$string['notify_mentee_enrolled_mentee_subject'] = 'You have been enrolled by your mentor';
+$string['notify_mentee_enrolled_mentee_body']    = 'You have been enrolled as a mentee by {$a->mentor}. They will be able to support your learning journey and view your course progress.';
+
+$string['notify_mentee_deactivated_subject']     = 'Your mentee access has been temporarily suspended';
+$string['notify_mentee_deactivated_body']        = 'Your access as a mentee of {$a->mentor} has been temporarily suspended. This may be due to a change in sub­scription status. Please contact your institution for further assistance.';

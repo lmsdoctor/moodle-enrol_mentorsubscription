@@ -51,9 +51,51 @@ class notification_manager {
      * @return bool True if sent; false if already sent or skipped.
      */
     public function notify_expiry_warning(int $subscriptionid, int $daysBefore): bool {
-        // TODO M-5.3: Build message object and call message_send().
-        // Check UNIQUE constraint first; insert record on success.
-        throw new \coding_exception('notify_expiry_warning() not yet implemented — scheduled for M-5.3.');
+        global $DB;
+
+        // Deduplication: only send each (subscription, type, days) combination once.
+        $alreadySent = $DB->record_exists('enrol_mentorsub_notifications', [
+            'subscriptionid' => $subscriptionid,
+            'type'           => 'expiry_warning',
+            'days_before'    => $daysBefore,
+        ]);
+        if ($alreadySent) {
+            return false;
+        }
+
+        $sub = $DB->get_record('enrol_mentorsub_subscriptions',
+                               ['id' => $subscriptionid], '*', IGNORE_MISSING);
+        if (!$sub) {
+            return false;
+        }
+
+        $mentor   = $DB->get_record('user', ['id' => $sub->userid], '*', IGNORE_MISSING);
+        if (!$mentor || $mentor->deleted) {
+            return false;
+        }
+
+        $sender  = \core_user::get_noreply_user();
+        $subject = get_string('notify_expiry_warning_subject', 'enrol_mentorsubscription',
+                              ['days' => $daysBefore]);
+        $body    = get_string('notify_expiry_warning_body', 'enrol_mentorsubscription', [
+            'days'    => $daysBefore,
+            'date'    => userdate($sub->period_end),
+            'siteurl' => (string) \core\url::make_moodle_url('/'),
+        ]);
+
+        $msg = $this->build_message($sender, $mentor, $subject, $body);
+        $msgid = message_send($msg);
+
+        if ($msgid) {
+            $DB->insert_record('enrol_mentorsub_notifications', [
+                'subscriptionid' => $subscriptionid,
+                'type'           => 'expiry_warning',
+                'days_before'    => $daysBefore,
+                'timesent'       => time(),
+            ]);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -66,8 +108,33 @@ class notification_manager {
      * @return void
      */
     public function notify_mentee_enrolled(int $mentorid, int $menteeid): void {
-        // TODO M-5.4: message_send() to both mentor and mentee.
-        throw new \coding_exception('notify_mentee_enrolled() not yet implemented — scheduled for M-5.4.');
+        global $DB;
+
+        $sender  = \core_user::get_noreply_user();
+        $mentor  = $DB->get_record('user', ['id' => $mentorid], '*', IGNORE_MISSING);
+        $mentee  = $DB->get_record('user', ['id' => $menteeid], '*', IGNORE_MISSING);
+
+        if (!$mentor || $mentor->deleted || !$mentee || $mentee->deleted) {
+            return;
+        }
+
+        $fullname = fullname($mentee);
+
+        // Notify mentor that the mentee has been added.
+        $mentorSubject = get_string('notify_mentee_enrolled_mentor_subject',
+                                   'enrol_mentorsubscription', ['name' => $fullname]);
+        $mentorBody = get_string('notify_mentee_enrolled_mentor_body',
+                                'enrol_mentorsubscription', ['name' => $fullname]);
+        message_send($this->build_message($sender, $mentor, $mentorSubject, $mentorBody));
+
+        // Notify mentee that they have been enrolled.
+        $menteeSubject = get_string('notify_mentee_enrolled_mentee_subject',
+                                   'enrol_mentorsubscription',
+                                   ['mentor' => fullname($mentor)]);
+        $menteeBody = get_string('notify_mentee_enrolled_mentee_body',
+                                'enrol_mentorsubscription',
+                                ['mentor' => fullname($mentor)]);
+        message_send($this->build_message($sender, $mentee, $menteeSubject, $menteeBody));
     }
 
     /**
@@ -80,8 +147,23 @@ class notification_manager {
      * @return void
      */
     public function notify_mentee_deactivated(int $menteeid, int $mentorid): void {
-        // TODO M-5.5: message_send() to mentee.
-        throw new \coding_exception('notify_mentee_deactivated() not yet implemented — scheduled for M-5.5.');
+        global $DB;
+
+        $sender = \core_user::get_noreply_user();
+        $mentee = $DB->get_record('user', ['id' => $menteeid], '*', IGNORE_MISSING);
+        $mentor = $DB->get_record('user', ['id' => $mentorid], '*', IGNORE_MISSING);
+
+        if (!$mentee || $mentee->deleted) {
+            return;
+        }
+
+        $subject = get_string('notify_mentee_deactivated_subject',
+                             'enrol_mentorsubscription');
+        $body    = get_string('notify_mentee_deactivated_body',
+                             'enrol_mentorsubscription',
+                             ['mentor' => $mentor ? fullname($mentor) : '']);
+
+        message_send($this->build_message($sender, $mentee, $subject, $body));
     }
 
     /**

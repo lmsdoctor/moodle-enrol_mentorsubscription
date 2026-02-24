@@ -57,7 +57,36 @@ class check_expiring_subscriptions extends \core\task\scheduled_task {
      * @return void
      */
     public function execute(): void {
-        // TODO M-5.1: Query subscriptions nearing expiry and call notification_manager.
-        mtrace('enrol_mentorsubscription: check_expiring_subscriptions — stub executed.');
+        global $DB;
+
+        // Warning thresholds (days before expiry). Configurable via plugin settings.
+        $rawDays = get_config('enrol_mentorsubscription', 'expiry_warning_days');
+        $thresholds = !empty($rawDays)
+            ? array_map('intval', explode(',', $rawDays))
+            : [14, 7, 3];
+
+        $now     = time();
+        $manager = new \enrol_mentorsubscription\notification_manager();
+        $total   = 0;
+
+        foreach ($thresholds as $days) {
+            $windowStart = $now + ($days * DAYSECS);
+            $windowEnd   = $windowStart + DAYSECS;
+
+            $subscriptions = $DB->get_records_select(
+                'enrol_mentorsub_subscriptions',
+                "status = 'active' AND period_end >= :wstart AND period_end < :wend",
+                ['wstart' => $windowStart, 'wend' => $windowEnd]
+            );
+
+            foreach ($subscriptions as $sub) {
+                $sent = $manager->notify_expiry_warning((int) $sub->id, $days);
+                if ($sent) {
+                    $total++;
+                }
+            }
+        }
+
+        mtrace("enrol_mentorsubscription: check_expiring_subscriptions — sent {$total} warning(s).");
     }
 }
