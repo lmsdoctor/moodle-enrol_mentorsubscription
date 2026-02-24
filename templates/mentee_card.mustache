@@ -1,0 +1,39 @@
+{{!
+    Mentee Card — single mentee row with active/inactive toggle.
+
+    Context variables (from mentees array in mentor_dashboard.php):
+      - menteeid   int
+      - fullname   string
+      - email      string
+      - is_active  bool
+
+    @package    enrol_mentorsubscription
+    @copyright  2026 ArchitectLMS Team
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="enrol-mentorsub-mentee-card d-flex align-items-center p-3 border-bottom"
+     data-menteeid="{{menteeid}}">
+
+    <div class="flex-grow-1">
+        <strong class="d-block">{{fullname}}</strong>
+        <small class="text-muted">{{email}}</small>
+    </div>
+
+    <div class="enrol-mentorsub-toggle d-flex align-items-center gap-2">
+        <span class="badge {{#is_active}}badge-success{{/is_active}}{{^is_active}}badge-secondary{{/is_active}} mr-2">
+            {{#is_active}}{{#str}} mentee_active, enrol_mentorsubscription {{/str}}{{/is_active}}
+            {{^is_active}}{{#str}} mentee_inactive, enrol_mentorsubscription {{/str}}{{/is_active}}
+        </span>
+
+        <div class="custom-control custom-switch">
+            <input type="checkbox"
+                   class="custom-control-input enrol-mentorsub-status-toggle"
+                   id="mentee-toggle-{{menteeid}}"
+                   data-menteeid="{{menteeid}}"
+                   {{#is_active}}checked{{/is_active}}
+                   aria-label="{{#str}} mentee_activate, enrol_mentorsubscription {{/str}}">
+            <label class="custom-control-label" for="mentee-toggle-{{menteeid}}"></label>
+        </div>
+    </div>
+
+</div>

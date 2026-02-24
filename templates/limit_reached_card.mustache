@@ -1,0 +1,26 @@
+{{!
+    Limit Reached Card — shown when active_count >= max_mentees.
+
+    Prompts the mentor to contact the admin for an upgrade.
+    Rendered as a partial inside mentor_dashboard.mustache.
+
+    @package    enrol_mentorsubscription
+    @copyright  2026 ArchitectLMS Team
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="alert alert-info d-flex align-items-center mb-4" role="alert"
+     data-region="limit-reached-card">
+
+    <div class="flex-shrink-0 mr-3">
+        {{#pix}} i/info, core {{/pix}}
+    </div>
+
+    <div>
+        <strong>{{#str}} dashboard_limit, enrol_mentorsubscription {{/str}}</strong>
+        <p class="mb-2">{{#str}} dashboard_limit_reached, enrol_mentorsubscription {{/str}}</p>
+        <a href="mailto:" class="btn btn-outline-primary btn-sm">
+            {{#str}} dashboard_upgrade, enrol_mentorsubscription {{/str}}
+        </a>
+    </div>
+
+</div>

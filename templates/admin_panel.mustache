@@ -1,0 +1,102 @@
+{{!
+    Admin Panel — Mentor Subscription administration view.
+
+    Context variables (exported by classes/output/admin_subscription_panel.php):
+      - subtypes       array of { id, name, billing_cycle, price, max_mentees, stripe_price_id, is_active }
+      - active_mentors array of { userid, fullname, status, billing_cycle, period_end, billed_price, max_mentees }
+
+    @package    enrol_mentorsubscription
+    @copyright  2026 ArchitectLMS Team
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="enrol-mentorsub-admin" data-region="admin-panel">
+
+    <h2>{{#str}} adminpanel_title, enrol_mentorsubscription {{/str}}</h2>
+
+    {{! ── Subscription Types ──────────────────────────────────────────── }}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0">{{#str}} adminpanel_subtypes, enrol_mentorsubscription {{/str}}</h3>
+            <a href="#" class="btn btn-sm btn-primary">+ Add type</a>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Cycle</th>
+                        <th>Price</th>
+                        <th>Limit</th>
+                        <th>Stripe Price ID</th>
+                        <th>Active</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#subtypes}}
+                    <tr>
+                        <td>{{name}}</td>
+                        <td>{{billing_cycle}}</td>
+                        <td>${{price}}</td>
+                        <td>{{max_mentees}}</td>
+                        <td><code>{{stripe_price_id}}</code></td>
+                        <td>
+                            {{#is_active}}<span class="badge badge-success">Yes</span>{{/is_active}}
+                            {{^is_active}}<span class="badge badge-secondary">No</span>{{/is_active}}
+                        </td>
+                        <td>
+                            <a href="#" data-action="edit-subtype" data-id="{{id}}">Edit</a>
+                        </td>
+                    </tr>
+                    {{/subtypes}}
+                    {{^subtypes}}
+                    <tr><td colspan="7" class="text-center text-muted py-3">No subscription types defined.</td></tr>
+                    {{/subtypes}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{! ── Active Mentors ──────────────────────────────────────────────── }}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title mb-0">{{#str}} adminpanel_mentors, enrol_mentorsubscription {{/str}}</h3>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Mentor</th>
+                        <th>Status</th>
+                        <th>Cycle</th>
+                        <th>Price</th>
+                        <th>Mentees</th>
+                        <th>Expires</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#active_mentors}}
+                    <tr>
+                        <td>{{fullname}}</td>
+                        <td><span class="badge badge-info">{{status}}</span></td>
+                        <td>{{billing_cycle}}</td>
+                        <td>${{billed_price}}</td>
+                        <td>— / {{max_mentees}}</td>
+                        <td>{{period_end}}</td>
+                        <td>
+                            <a href="#" data-action="view-history" data-userid="{{userid}}">History</a>
+                            &nbsp;|&nbsp;
+                            <a href="#" data-action="edit-override" data-userid="{{userid}}">Override</a>
+                        </td>
+                    </tr>
+                    {{/active_mentors}}
+                    {{^active_mentors}}
+                    <tr><td colspan="7" class="text-center text-muted py-3">No active mentor subscriptions.</td></tr>
+                    {{/active_mentors}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

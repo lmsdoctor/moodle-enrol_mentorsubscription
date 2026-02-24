@@ -1,0 +1,87 @@
+{{!
+    Mentor Dashboard — main view for the authenticated mentor.
+
+    Context variables (exported by classes/output/mentor_dashboard.php):
+      - has_subscription   bool
+      - subscription       object|null [status, billing_cycle, billed_price, period_end, max_mentees]
+      - mentees            array of [menteeid, fullname, email, is_active]
+      - active_count       int
+      - max_mentees        int
+      - limit_reached      bool
+
+    @package    enrol_mentorsubscription
+    @copyright  2026 ArchitectLMS Team
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="enrol-mentorsub-dashboard" data-region="mentor-dashboard">
+
+    {{! ── Subscription Summary Card ────────────────────────────────── }}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title mb-0">{{#str}} dashboard_subscription, enrol_mentorsubscription {{/str}}</h3>
+        </div>
+        <div class="card-body">
+            {{#has_subscription}}
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">{{#str}} dashboard_plan, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-9">{{subscription.billing_cycle}}</dd>
+
+                    <dt class="col-sm-3">{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-9">${{subscription.billed_price}}</dd>
+
+                    <dt class="col-sm-3">{{#str}} dashboard_expires, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-9">{{subscription.period_end}}</dd>
+
+                    <dt class="col-sm-3">{{#str}} dashboard_active_mentees, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-9">
+                        {{active_count}} / {{max_mentees}}
+                        <div class="progress mt-1" style="height: 8px; max-width: 200px;">
+                            <div class="progress-bar {{#limit_reached}}bg-danger{{/limit_reached}}{{^limit_reached}}bg-success{{/limit_reached}}"
+                                 role="progressbar"
+                                 style="width: {{active_count}}%"
+                                 aria-valuenow="{{active_count}}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="{{max_mentees}}">
+                            </div>
+                        </div>
+                    </dd>
+                </dl>
+            {{/has_subscription}}
+            {{^has_subscription}}
+                <div class="alert alert-warning mb-0">
+                    {{#str}} error_no_active_subscription, enrol_mentorsubscription {{/str}}
+                </div>
+            {{/has_subscription}}
+        </div>
+    </div>
+
+    {{! ── Limit Reached Card ──────────────────────────────────────── }}
+    {{#limit_reached}}
+        {{> enrol_mentorsubscription/limit_reached_card }}
+    {{/limit_reached}}
+
+    {{! ── Mentees List ────────────────────────────────────────────── }}
+    {{#has_subscription}}
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0">{{#str}} dashboard_mentees, enrol_mentorsubscription {{/str}}</h3>
+            {{^limit_reached}}
+            <button type="button"
+                    class="btn btn-primary btn-sm"
+                    data-action="add-mentee">
+                {{#str}} dashboard_add_mentee, enrol_mentorsubscription {{/str}}
+            </button>
+            {{/limit_reached}}
+        </div>
+        <div class="card-body p-0">
+            {{#mentees}}
+                {{> enrol_mentorsubscription/mentee_card }}
+            {{/mentees}}
+            {{^mentees}}
+                <div class="p-3 text-muted">No mentees registered yet.</div>
+            {{/mentees}}
+        </div>
+    </div>
+    {{/has_subscription}}
+
+</div>
