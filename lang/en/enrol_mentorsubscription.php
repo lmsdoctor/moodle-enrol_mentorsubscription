@@ -133,6 +133,7 @@ $string['error_mentee_not_found']       = 'The specified user was not found in t
 $string['error_mentee_already_assigned'] = 'This user already has a mentor assigned in the system.';
 $string['error_invalid_webhook']        = 'Invalid webhook signature.';
 $string['errornostripekey']             = 'Stripe secret key is not configured. Go to Site Administration → Plugins → Enrolments → Mentor Subscription to configure it.';
+$string['mentee_added_success']         = 'Mentee successfully added to your list.';
 
 // -------------------------------------------------------------------------
 // Notifications

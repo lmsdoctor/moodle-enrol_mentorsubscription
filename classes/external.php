@@ -82,8 +82,24 @@ class external extends \external_api {
         self::validate_context($context);
         require_capability('enrol/mentorsubscription:managementees', $context);
 
-        // TODO M-4.3: Call mentorship_manager::toggle_mentee_status().
-        throw new \coding_exception('toggle_mentee_status() not yet implemented — scheduled for M-4.3.');
+        $manager = new \enrol_mentorsubscription\mentorship\mentorship_manager();
+        $result  = $manager->toggle_mentee_status(
+            (int) $USER->id,
+            (int) $params['menteeid'],
+            (int) $params['is_active']
+        );
+
+        $sub          = (new \enrol_mentorsubscription\subscription\subscription_manager())
+                            ->get_active_subscription((int) $USER->id);
+        $maxMentees   = $sub ? (int) $sub->billed_max_mentees : 0;
+        $activeCount  = $manager->count_active_mentees((int) $USER->id);
+
+        return [
+            'success'      => (bool) $result['success'],
+            'reason'       => (string) ($result['reason'] ?? ''),
+            'active_count' => $activeCount,
+            'max_mentees'  => $maxMentees,
+        ];
     }
 
     /**
@@ -128,8 +144,21 @@ class external extends \external_api {
         self::validate_context($context);
         require_capability('enrol/mentorsubscription:managementees', $context);
 
-        // TODO M-3.1: Call mentorship_manager::add_mentee($USER->id, $params['menteeid']).
-        throw new \coding_exception('add_mentee() not yet implemented — scheduled for M-3.1.');
+        try {
+            $record = (new \enrol_mentorsubscription\mentorship\mentorship_manager())
+                          ->add_mentee((int) $USER->id, (int) $params['menteeid']);
+            return [
+                'success'  => true,
+                'message'  => get_string('mentee_added_success', 'enrol_mentorsubscription'),
+                'menteeid' => (int) $record->menteeid,
+            ];
+        } catch (\moodle_exception $e) {
+            return [
+                'success'  => false,
+                'message'  => $e->getMessage(),
+                'menteeid' => (int) $params['menteeid'],
+            ];
+        }
     }
 
     /**
@@ -168,8 +197,25 @@ class external extends \external_api {
         self::validate_context($context);
         require_capability('enrol/mentorsubscription:viewdashboard', $context);
 
-        // TODO M-4.1: Call subscription_manager::get_active_subscription($USER->id).
-        throw new \coding_exception('get_subscription_summary() not yet implemented — scheduled for M-4.1.');
+        $manager = new \enrol_mentorsubscription\subscription\subscription_manager();
+        $sub     = $manager->get_active_subscription((int) $USER->id);
+
+        if (!$sub) {
+            return ['has_subscription' => false];
+        }
+
+        $activeCount = (new \enrol_mentorsubscription\mentorship\mentorship_manager())
+                           ->count_active_mentees((int) $USER->id);
+
+        return [
+            'has_subscription' => true,
+            'status'           => $sub->status,
+            'billing_cycle'    => $sub->billing_cycle,
+            'period_end'       => (int) $sub->period_end,
+            'billed_price'     => (string) $sub->billed_price,
+            'active_count'     => $activeCount,
+            'max_mentees'      => (int) $sub->billed_max_mentees,
+        ];
     }
 
     /**
@@ -232,12 +278,54 @@ class external extends \external_api {
         int $validUntil,
         string $adminNotes
     ): array {
+        global $DB;
+
+        $params = self::validate_parameters(self::save_override_parameters(), [
+            'userid'                   => $userid,
+            'subtypeid'                => $subtypeid,
+            'price_override'           => $priceOverride,
+            'max_mentees_override'     => $maxMenteesOverride,
+            'stripe_price_id_override' => $stripePriceIdOverride,
+            'valid_from'               => $validFrom,
+            'valid_until'              => $validUntil,
+            'admin_notes'              => $adminNotes,
+        ]);
+
         $context = \context_system::instance();
         self::validate_context($context);
         require_capability('enrol/mentorsubscription:manageall', $context);
 
-        // TODO M-2.3: Insert or update enrol_mentorsub_sub_overrides record.
-        throw new \coding_exception('save_override() not yet implemented — scheduled for M-2.3.');
+        $now = time();
+
+        // Check for an existing override for this user+subtype that is still valid.
+        $existing = $DB->get_record_select(
+            'enrol_mentorsub_sub_overrides',
+            'userid = :uid AND subtypeid = :sid AND (valid_until = 0 OR valid_until > :now)',
+            ['uid' => $params['userid'], 'sid' => $params['subtypeid'], 'now' => $now]
+        );
+
+        $record = (object) [
+            'userid'                   => $params['userid'],
+            'subtypeid'                => $params['subtypeid'],
+            'price_override'           => $params['price_override'],
+            'max_mentees_override'     => $params['max_mentees_override'],
+            'stripe_price_id_override' => $params['stripe_price_id_override'] ?: null,
+            'valid_from'               => $params['valid_from'],
+            'valid_until'              => $params['valid_until'],
+            'admin_notes'              => $params['admin_notes'],
+            'timemodified'             => $now,
+        ];
+
+        if ($existing) {
+            $record->id = $existing->id;
+            $DB->update_record('enrol_mentorsub_sub_overrides', $record);
+            $overrideid = (int) $existing->id;
+        } else {
+            $record->timecreated = $now;
+            $overrideid = (int) $DB->insert_record('enrol_mentorsub_sub_overrides', $record);
+        }
+
+        return ['success' => true, 'overrideid' => $overrideid];
     }
 
     /**
