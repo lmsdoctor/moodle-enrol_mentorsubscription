@@ -132,6 +132,7 @@ $string['error_limit_reached']          = 'You have reached the mentee limit for
 $string['error_mentee_not_found']       = 'The specified user was not found in the system.';
 $string['error_mentee_already_assigned'] = 'This user already has a mentor assigned in the system.';
 $string['error_invalid_webhook']        = 'Invalid webhook signature.';
+$string['errornostripekey']             = 'Stripe secret key is not configured. Go to Site Administration → Plugins → Enrolments → Mentor Subscription to configure it.';
 
 // -------------------------------------------------------------------------
 // Notifications
@@ -179,3 +180,10 @@ $string['override_admin_notes']        = 'Admin notes';
 // Mentee search / autocomplete
 // -------------------------------------------------------------------------
 $string['mentee_search']               = 'Search users';
+
+// -------------------------------------------------------------------------
+// Parent role
+// -------------------------------------------------------------------------
+$string['parentrole']                  = 'Mentor (Parent)';
+$string['parentrole_desc']             = 'Grants mentors access to their mentees\' grades and profile data via the Moodle Parent Role mechanism.';
+$string['cannotcreateparentrole']      = 'Could not create the parent role. Please check Moodle role configuration.';
