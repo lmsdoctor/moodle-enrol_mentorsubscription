@@ -79,12 +79,14 @@ class admin_subscription_panel implements \renderable, \templatable {
         foreach ($this->activeMentors as $sub) {
             $mentorsCtx[] = [
                 'userid'         => $sub->userid,
+                'subtypeid'      => $sub->subtypeid,
                 'fullname'       => fullname($sub),
                 'status'         => $sub->status,
                 'billing_cycle'  => $sub->billing_cycle,
                 'period_end'     => userdate($sub->period_end),
                 'billed_price'   => number_format((float) $sub->billed_price, 2),
                 'max_mentees'    => $sub->billed_max_mentees,
+                'admin_url'      => (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false),
             ];
         }
 

@@ -85,9 +85,7 @@
                         <td>— / {{max_mentees}}</td>
                         <td>{{period_end}}</td>
                         <td>
-                            <a href="#" data-action="view-history" data-userid="{{userid}}">History</a>
-                            &nbsp;|&nbsp;
-                            <a href="#" data-action="edit-override" data-userid="{{userid}}">Override</a>
+                            <a href="{{admin_url}}?formaction=editoverride&userid={{userid}}&subtypeid={{subtypeid}}">Override</a>
                         </td>
                     </tr>
                     {{/active_mentors}}

@@ -30,7 +30,6 @@ import Notification from 'core/notification';
 import ModalFactory from 'core/modal_factory';
 import ModalEvents from 'core/modal_events';
 import {get_strings as getStrings} from 'core/str';
-import * as Templates from 'core/templates';
 
 /** @type {HTMLElement} Root dashboard element. */
 let dashboardRoot = null;

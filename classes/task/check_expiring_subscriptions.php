@@ -61,9 +61,16 @@ class check_expiring_subscriptions extends \core\task\scheduled_task {
 
         // Warning thresholds (days before expiry). Configurable via plugin settings.
         $rawDays = get_config('enrol_mentorsubscription', 'expiry_warning_days');
-        $thresholds = !empty($rawDays)
-            ? array_map('intval', explode(',', $rawDays))
-            : [14, 7, 3];
+        // Support both a single integer ("7") and a comma-separated list ("14,7,3").
+        if (!empty($rawDays)) {
+            $thresholds = array_filter(
+                array_map('intval', explode(',', $rawDays)),
+                static fn($d) => $d > 0
+            );
+        }
+        if (empty($thresholds)) {
+            $thresholds = [14, 7, 3];
+        }
 
         $now     = time();
         $manager = new \enrol_mentorsubscription\notification_manager();

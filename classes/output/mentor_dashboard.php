@@ -99,6 +99,10 @@ class mentor_dashboard implements \renderable, \templatable {
         $ctx['limit_reached'] = $this->subscription &&
                                 $activeCount >= (int) $this->subscription->billed_max_mentees;
 
+        // Pre-computed percentage for the progress bar (Mustache can't do math).
+        $max = $ctx['max_mentees'];
+        $ctx['progress_pct'] = $max > 0 ? (int) round(($activeCount / $max) * 100) : 0;
+
         return $ctx;
     }
 }

@@ -84,8 +84,8 @@ if ($ADMIN->fulltree) {
         'enrol_mentorsubscription/expiry_warning_days',
         get_string('settings_expiry_warning_days', 'enrol_mentorsubscription'),
         get_string('settings_expiry_warning_days_desc', 'enrol_mentorsubscription'),
-        '7',
-        PARAM_INT
+        '14,7,3',
+        PARAM_TEXT
     ));
 
     // Grace period in days for past_due subscriptions before marking expired.

@@ -57,7 +57,7 @@ $string['settings_stripe_publishable_key_desc'] = 'Public key used in the fronte
 $string['settings_default_max_mentees']        = 'Default Mentee Limit';
 $string['settings_default_max_mentees_desc']   = 'Maximum number of mentees per subscription when no override is in place.';
 $string['settings_expiry_warning_days']        = 'Expiry Warning Days';
-$string['settings_expiry_warning_days_desc']   = 'Number of days before subscription expiry to send a renewal reminder notification.';
+$string['settings_expiry_warning_days_desc']   = 'Days before subscription expiry to send renewal reminders. Accepts a single number (e.g. 7) or a comma-separated list (e.g. 14,7,3) to send at multiple thresholds.';
 $string['settings_pastdue_grace_days']         = 'Past-Due Grace Period (days)';
 $string['settings_pastdue_grace_days_desc']    = 'Days a past_due subscription retains access before being marked as expired.';
 $string['settings_studentroleid']              = 'Student Role';
@@ -225,3 +225,7 @@ $string['subscribe_mentee_limit']      = 'Up to {$a->limit} mentees';
 $string['override_saved']              = 'Override saved successfully.';
 $string['mentee_activate']             = 'Toggle mentee status';
 
+// -------------------------------------------------------------------------
+// Messaging API provider
+// -------------------------------------------------------------------------
+$string['messageprovider:notification'] = 'Mentor Subscription notifications (expiry warnings, mentee enrolments)';

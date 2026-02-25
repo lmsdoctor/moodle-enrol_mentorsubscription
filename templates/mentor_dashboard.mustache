@@ -34,11 +34,11 @@
 
                     <dt class="col-sm-3">{{#str}} dashboard_active_mentees, enrol_mentorsubscription {{/str}}</dt>
                     <dd class="col-sm-9">
-                        {{active_count}} / {{max_mentees}}
+                        <span data-region="active-count">{{active_count}} / {{max_mentees}}</span>
                         <div class="progress mt-1" style="height: 8px; max-width: 200px;">
                             <div class="progress-bar {{#limit_reached}}bg-danger{{/limit_reached}}{{^limit_reached}}bg-success{{/limit_reached}}"
                                  role="progressbar"
-                                 style="width: {{active_count}}%"
+                                 style="width: {{progress_pct}}%"
                                  aria-valuenow="{{active_count}}"
                                  aria-valuemin="0"
                                  aria-valuemax="{{max_mentees}}">

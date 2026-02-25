@@ -44,13 +44,24 @@ class add_mentee_form extends \moodleform {
     public function definition(): void {
         $mform = $this->_form;
 
-        // Autocomplete: search existing Moodle users.
-        // Full implementation will use ajax user search (M-4.5).
+        // Autocomplete element backed by the standard Moodle user selector.
+        // Searches all non-deleted, non-guest users by name or email.
+        $options = [
+            'ajax'        => 'core_user/form_user_selector',
+            'multiple'    => false,
+            'noselectionstring' => get_string('mentee_search', 'enrol_mentorsubscription'),
+            'valuehtmlcallback' => static function($userid) {
+                $user = \core_user::get_user($userid);
+                return $user ? fullname($user) : '';
+            },
+        ];
+
         $mform->addElement(
-            'text',
+            'autocomplete',
             'menteeid',
             get_string('mentee_search', 'enrol_mentorsubscription'),
-            ['size' => 40]
+            [],
+            $options
         );
         $mform->setType('menteeid', PARAM_INT);
         $mform->addRule('menteeid', null, 'required', null, 'client');
