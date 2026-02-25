@@ -79,6 +79,28 @@ $functions = [
         'loginrequired' => true,
     ],
 
+    // Admin: cancel a mentor subscription in Stripe (at period end or immediately).
+    'enrol_mentorsubscription_cancel_subscription' => [
+        'classname'     => 'enrol_mentorsubscription\external\cancel_subscription',
+        'methodname'    => 'execute',
+        'description'   => 'Cancel a mentor subscription via Stripe (admin only).',
+        'type'          => 'write',
+        'ajax'          => true,
+        'capabilities'  => 'enrol/mentorsubscription:manageall',
+        'loginrequired' => true,
+    ],
+
+    // Admin: pause, resume, or change plan for a mentor subscription.
+    'enrol_mentorsubscription_manage_subscription' => [
+        'classname'     => 'enrol_mentorsubscription\external\manage_subscription',
+        'methodname'    => 'execute',
+        'description'   => 'Pause, resume, or change plan for a mentor subscription (admin only).',
+        'type'          => 'write',
+        'ajax'          => true,
+        'capabilities'  => 'enrol/mentorsubscription:manageall',
+        'loginrequired' => true,
+    ],
+
 ];
 
 // -------------------------------------------------------------------------
@@ -91,6 +113,8 @@ $services = [
             'enrol_mentorsubscription_add_mentee',
             'enrol_mentorsubscription_get_subscription_summary',
             'enrol_mentorsubscription_save_override',
+            'enrol_mentorsubscription_cancel_subscription',
+            'enrol_mentorsubscription_manage_subscription',
         ],
         'restrictedusers' => 0,
         'enabled'         => 1,

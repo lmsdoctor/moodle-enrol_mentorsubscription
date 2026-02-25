@@ -61,6 +61,121 @@ class stripe_handler {
     }
 
     // -------------------------------------------------------------------------
+    // Active subscription management (admin / mentor-initiated actions)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cancel a Stripe subscription.
+     *
+     * By default cancels at period end (mentor retains access until billing cycle ends).
+     * Pass $immediately = true to cancel and revoke access now.
+     *
+     * @param string $stripeSubId  Stripe subscription ID (sub_xxx).
+     * @param bool   $immediately  If true, cancel now. If false, cancel at period end.
+     * @return \Stripe\Subscription Updated Stripe Subscription object.
+     */
+    public function cancel_subscription(string $stripeSubId, bool $immediately = false): \Stripe\Subscription {
+        $stripe = $this->get_stripe_client();
+
+        if ($immediately) {
+            return $stripe->subscriptions->cancel($stripeSubId);
+        }
+
+        // cancel_at_period_end = true — Stripe keeps subscription active until cycle end,
+        // then fires customer.subscription.deleted which our webhook handles.
+        return $stripe->subscriptions->update($stripeSubId, [
+            'cancel_at_period_end' => true,
+        ]);
+    }
+
+    /**
+     * Pause a Stripe subscription's payment collection.
+     *
+     * The subscription remains in Stripe as "active" but invoices are not charged.
+     * Useful for temporary suspensions without losing the subscription record.
+     *
+     * @param string $stripeSubId  Stripe subscription ID.
+     * @return \Stripe\Subscription Updated Stripe Subscription object.
+     */
+    public function pause_subscription(string $stripeSubId): \Stripe\Subscription {
+        $stripe = $this->get_stripe_client();
+
+        return $stripe->subscriptions->update($stripeSubId, [
+            'pause_collection' => ['behavior' => 'keep_as_draft'],
+        ]);
+    }
+
+    /**
+     * Resume a paused Stripe subscription.
+     *
+     * Clears pause_collection so invoicing resumes on the next billing date.
+     *
+     * @param string $stripeSubId  Stripe subscription ID.
+     * @return \Stripe\Subscription Updated Stripe Subscription object.
+     */
+    public function resume_subscription(string $stripeSubId): \Stripe\Subscription {
+        $stripe = $this->get_stripe_client();
+
+        return $stripe->subscriptions->update($stripeSubId, [
+            'pause_collection' => '',   // empty string clears the pause_collection hash.
+        ]);
+    }
+
+    /**
+     * Change a subscription to a different Stripe Price (plan upgrade / downgrade).
+     *
+     * Uses proration mode 'always_invoice' so the change takes effect immediately
+     * and a prorated invoice is generated.
+     *
+     * @param string $stripeSubId   Stripe subscription ID.
+     * @param string $newPriceId    The new Stripe Price ID to switch to.
+     * @return \Stripe\Subscription Updated Stripe Subscription object.
+     */
+    public function change_plan(string $stripeSubId, string $newPriceId): \Stripe\Subscription {
+        $stripe = $this->get_stripe_client();
+
+        // Retrieve current subscription to get the subscription item ID.
+        $sub        = $stripe->subscriptions->retrieve($stripeSubId);
+        $itemId     = $sub->items->data[0]->id;
+
+        return $stripe->subscriptions->update($stripeSubId, [
+            'items'          => [['id' => $itemId, 'price' => $newPriceId]],
+            'proration_behavior' => 'always_invoice',
+        ]);
+    }
+
+    /**
+     * Retrieve a single Stripe subscription by ID.
+     *
+     * @param string $stripeSubId  Stripe subscription ID.
+     * @return \Stripe\Subscription
+     */
+    public function retrieve_subscription(string $stripeSubId): \Stripe\Subscription {
+        $stripe = $this->get_stripe_client();
+        return $stripe->subscriptions->retrieve($stripeSubId);
+    }
+
+    /**
+     * List all Stripe subscriptions for a customer.
+     *
+     * @param string $stripeCustomerId  Stripe customer ID (cus_xxx).
+     * @param int    $limit             Max results (1–100).
+     * @return \Stripe\Collection<\Stripe\Subscription>
+     */
+    public function list_subscriptions_for_customer(
+        string $stripeCustomerId,
+        int $limit = 10
+    ): \Stripe\Collection {
+        $stripe = $this->get_stripe_client();
+
+        return $stripe->subscriptions->all([
+            'customer' => $stripeCustomerId,
+            'limit'    => min(max(1, $limit), 100),
+            'expand'   => ['data.default_payment_method'],
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
     // Webhook signature verification — M-2.10
     // -------------------------------------------------------------------------
 

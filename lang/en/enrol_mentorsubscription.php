@@ -265,3 +265,25 @@ $string['back_to_admin']        = 'Back to admin panel';
 // Messaging API provider
 // -------------------------------------------------------------------------
 $string['messageprovider:notification'] = 'Mentor Subscription notifications (expiry warnings, mentee enrolments)';
+
+// -------------------------------------------------------------------------
+// Subscription management actions (cancel, pause, resume, change plan)
+// -------------------------------------------------------------------------
+$string['subscription_cancelled_immediately'] = 'Subscription cancelled immediately. All mentees have been unenrolled.';
+$string['subscription_cancelled_period_end']  = 'Subscription set to cancel at the end of the current billing period.';
+$string['subscription_paused']               = 'Subscription paused. Payment collection suspended.';
+$string['subscription_resumed']              = 'Subscription resumed. Payment collection re-enabled.';
+$string['subscription_plan_changed']         = 'Subscription plan updated successfully.';
+$string['error_no_stripe_subscription']      = 'This subscription has no associated Stripe subscription ID.';
+$string['error_subscription_not_paused']     = 'This subscription is not paused.';
+$string['error_change_plan_missing_params']  = 'New subscription type ID and Stripe Price ID are required to change plan.';
+$string['error_invalid_action']              = 'Invalid subscription management action.';
+$string['cancel_subscription']               = 'Cancel subscription';
+$string['cancel_at_period_end']              = 'Cancel at period end';
+$string['cancel_immediately']                = 'Cancel immediately';
+$string['pause_subscription']                = 'Pause subscription';
+$string['resume_subscription']               = 'Resume subscription';
+$string['change_plan']                       = 'Change plan';
+$string['subscription_status_paused']        = 'Paused';
+$string['subscription_status_cancelled']     = 'Cancelled';
+$string['subscription_cancel_warning']       = 'Cancelling immediately will unenrol all mentees. This cannot be undone.';

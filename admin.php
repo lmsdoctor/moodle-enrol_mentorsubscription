@@ -78,6 +78,64 @@ if ($formAction === 'togglesubtype' && $subtypeId) {
 }
 
 // -------------------------------------------------------------------------
+// Subscription management — cancel, pause, resume (immediate DB+Stripe actions).
+// -------------------------------------------------------------------------
+if ($formAction === 'cancelsubscription' && $targetUser) {
+    require_sesskey();
+    $immediately = (bool) optional_param('immediately', 0, PARAM_INT);
+    $subMgr = new subscription_manager();
+    $sub    = $subMgr->get_active_subscription($targetUser);
+    if ($sub) {
+        $subMgr->request_cancellation((int) $sub->id, $immediately);
+        $msgKey = $immediately ? 'subscription_cancelled_immediately' : 'subscription_cancelled_period_end';
+        redirect(
+            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            get_string($msgKey, 'enrol_mentorsubscription'),
+            null,
+            \core\output\notification::NOTIFY_SUCCESS
+        );
+    }
+    redirect(
+        new moodle_url('/enrol/mentorsubscription/admin.php'),
+        get_string('error_no_stripe_subscription', 'enrol_mentorsubscription'),
+        null,
+        \core\output\notification::NOTIFY_ERROR
+    );
+}
+
+if ($formAction === 'pausesubscription' && $targetUser) {
+    require_sesskey();
+    $subMgr = new subscription_manager();
+    $sub    = $subMgr->get_active_subscription($targetUser);
+    if ($sub) {
+        $subMgr->pause_subscription((int) $sub->id);
+        redirect(
+            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            get_string('subscription_paused', 'enrol_mentorsubscription'),
+            null,
+            \core\output\notification::NOTIFY_SUCCESS
+        );
+    }
+    redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+}
+
+if ($formAction === 'resumesubscription' && $targetUser) {
+    require_sesskey();
+    $subMgr = new subscription_manager();
+    $sub    = $subMgr->get_active_subscription($targetUser);
+    if ($sub) {
+        $subMgr->resume_subscription((int) $sub->id);
+        redirect(
+            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            get_string('subscription_resumed', 'enrol_mentorsubscription'),
+            null,
+            \core\output\notification::NOTIFY_SUCCESS
+        );
+    }
+    redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+}
+
+// -------------------------------------------------------------------------
 // Sub-type create / edit form.
 // -------------------------------------------------------------------------
 if ($formAction === 'editsubtype') {
@@ -152,7 +210,7 @@ if ($formAction === 'editoverride') {
 
     if ($submitted = $overrideForm->get_data()) {
         // Delegate to the external function for validation + persistence.
-        $result = \enrol_mentorsubscription\external::save_override(
+        $result = \enrol_mentorsubscription\external\save_override::execute(
             (int)    $submitted->userid,
             (int)    $submitted->subtypeid,
             isset($submitted->price_override) && $submitted->price_override !== ''

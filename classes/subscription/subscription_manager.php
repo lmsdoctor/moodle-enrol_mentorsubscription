@@ -241,4 +241,161 @@ class subscription_manager {
             }
         }
     }
+
+    // =========================================================================
+    // Active Stripe subscription management (admin / mentor-initiated)
+    // =========================================================================
+
+    /**
+     * Request cancellation of a subscription in Stripe and reflect it locally.
+     *
+     * Cancellation modes:
+     * - $immediately = false (default): sets cancel_at_period_end = true.
+     *   The mentor retains access until the current billing period ends.
+     *   Stripe will fire customer.subscription.deleted at period end, which
+     *   triggers expire_subscription() via the webhook.
+     * - $immediately = true: Stripe terminates NOW and fires the deleted event
+     *   immediately, which triggers expire_subscription() via the webhook.
+     *   This method also pre-emptively updates the local record so the UI
+     *   reflects the intent without waiting for the webhook.
+     *
+     * @param int  $subscriptionId Local subscription record ID.
+     * @param bool $immediately    True to cancel now; false to cancel at period end.
+     * @return void
+     * @throws \moodle_exception If the subscription has no stripe_subscription_id.
+     */
+    public function request_cancellation(int $subscriptionId, bool $immediately = false): void {
+        global $DB;
+
+        $sub = $DB->get_record('enrol_mentorsub_subscriptions',
+                               ['id' => $subscriptionId], '*', MUST_EXIST);
+
+        if (empty($sub->stripe_subscription_id)) {
+            throw new \moodle_exception('error_no_stripe_subscription', 'enrol_mentorsubscription');
+        }
+
+        $handler = new stripe_handler();
+        $handler->cancel_subscription($sub->stripe_subscription_id, $immediately);
+
+        $now = time();
+
+        if ($immediately) {
+            // Webhook will also fire, but update locally now so the admin panel
+            // reflects the change without waiting for the webhook round-trip.
+            $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'cancelled',
+                           ['id' => $subscriptionId]);
+            $DB->set_field('enrol_mentorsub_subscriptions', 'cancelled_at', $now,
+                           ['id' => $subscriptionId]);
+            $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', $now,
+                           ['id' => $subscriptionId]);
+        } else {
+            // Mark cancel_at_period_end locally so the dashboard can show a warning.
+            $DB->set_field('enrol_mentorsub_subscriptions', 'cancel_at_period_end', 1,
+                           ['id' => $subscriptionId]);
+            $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', $now,
+                           ['id' => $subscriptionId]);
+        }
+    }
+
+    /**
+     * Pause a subscription: tells Stripe to stop collecting payments temporarily.
+     *
+     * The local status is set to 'paused'. Mentee access is retained while paused.
+     * Use resume_subscription() to re-enable payment collection.
+     *
+     * @param int $subscriptionId Local subscription record ID.
+     * @return void
+     * @throws \moodle_exception If the subscription has no stripe_subscription_id.
+     */
+    public function pause_subscription(int $subscriptionId): void {
+        global $DB;
+
+        $sub = $DB->get_record('enrol_mentorsub_subscriptions',
+                               ['id' => $subscriptionId], '*', MUST_EXIST);
+
+        if (empty($sub->stripe_subscription_id)) {
+            throw new \moodle_exception('error_no_stripe_subscription', 'enrol_mentorsubscription');
+        }
+
+        (new stripe_handler())->pause_subscription($sub->stripe_subscription_id);
+
+        $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'paused',
+                       ['id' => $subscriptionId]);
+        $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', time(),
+                       ['id' => $subscriptionId]);
+    }
+
+    /**
+     * Resume a previously paused subscription.
+     *
+     * Re-enables Stripe payment collection on the next billing date.
+     * The local status is restored to 'active'.
+     *
+     * @param int $subscriptionId Local subscription record ID.
+     * @return void
+     * @throws \moodle_exception If the subscription has no stripe_subscription_id or is not paused.
+     */
+    public function resume_subscription(int $subscriptionId): void {
+        global $DB;
+
+        $sub = $DB->get_record('enrol_mentorsub_subscriptions',
+                               ['id' => $subscriptionId], '*', MUST_EXIST);
+
+        if (empty($sub->stripe_subscription_id)) {
+            throw new \moodle_exception('error_no_stripe_subscription', 'enrol_mentorsubscription');
+        }
+
+        if ($sub->status !== 'paused') {
+            throw new \moodle_exception('error_subscription_not_paused', 'enrol_mentorsubscription');
+        }
+
+        (new stripe_handler())->resume_subscription($sub->stripe_subscription_id);
+
+        $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'active',
+                       ['id' => $subscriptionId]);
+        $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', time(),
+                       ['id' => $subscriptionId]);
+    }
+
+    /**
+     * Change a subscription's plan (upgrade / downgrade) in Stripe.
+     *
+     * Switches the Stripe subscription to $newPriceId with immediate proration.
+     * Updates the local snapshot fields (stripe_price_id_used, billed_max_mentees,
+     * billing_cycle) to reflect the new plan.
+     *
+     * @param int    $subscriptionId  Local subscription record ID.
+     * @param int    $newSubtypeId    Target sub_type ID.
+     * @param string $newPriceId      New Stripe Price ID.
+     * @param int    $newMaxMentees   New mentee limit (from new plan or override).
+     * @param string $newBillingCycle 'monthly' or 'annual'.
+     * @return void
+     */
+    public function change_plan(
+        int $subscriptionId,
+        int $newSubtypeId,
+        string $newPriceId,
+        int $newMaxMentees,
+        string $newBillingCycle
+    ): void {
+        global $DB;
+
+        $sub = $DB->get_record('enrol_mentorsub_subscriptions',
+                               ['id' => $subscriptionId], '*', MUST_EXIST);
+
+        if (empty($sub->stripe_subscription_id)) {
+            throw new \moodle_exception('error_no_stripe_subscription', 'enrol_mentorsubscription');
+        }
+
+        (new stripe_handler())->change_plan($sub->stripe_subscription_id, $newPriceId);
+
+        $DB->update_record('enrol_mentorsub_subscriptions', (object) [
+            'id'                   => $subscriptionId,
+            'subtypeid'            => $newSubtypeId,
+            'stripe_price_id_used' => $newPriceId,
+            'billed_max_mentees'   => $newMaxMentees,
+            'billing_cycle'        => $newBillingCycle,
+            'timemodified'         => time(),
+        ]);
+    }
 }
