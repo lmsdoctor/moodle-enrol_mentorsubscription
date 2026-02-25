@@ -387,7 +387,7 @@ SCHEDULED TASKS
 ## 6. Roadmap de Desarrollo
 
 > **Progreso global al 24/Feb/2026:** M-0 ✅ M-1 ✅ M-2 ✅ M-3 ✅ M-4 ✅ M-5 ✅ M-6 🔴
-> **Pendiente crítico:** Todos los PHPUnit y Behat (M-6.7–M-6.11), auditorías de seguridad (M-6.1–6.5), documentación (M-6.12–13).
+> **��� PLUGIN COMPLETO — Todos los hitos entregados.
 
 ### Resumen de Hitos
 
@@ -528,20 +528,20 @@ SCHEDULED TASKS
 
 | Sub-Hito | Tarea | Criterio de Aceptación | Estado |
 |---|---|---|---|
-| M-6.1 | Auditoría SQL injection | 0 SQL directo en todo el plugin; 100% uso de `$DB` API de Moodle | ⏳ Pendiente |
-| M-6.2 | Auditoría XSS | Todo output usa `format_text()` / `format_string()`; templates Mustache escapan automáticamente | ⏳ Pendiente |
-| M-6.3 | Auditoría CSRF | Todos los formularios usan `sesskey`; todos los endpoints AJAX verifican `require_sesskey()` | ⏳ Pendiente |
-| M-6.4 | Auditoría capabilities | `require_login()` y `require_capability()` en cada punto de entrada; ningún endpoint sin protección | ⏳ Pendiente |
-| M-6.5 | Auditoría parámetros | `required_param()` / `optional_param()` en todos los endpoints; sin `$_GET/$_POST` directos | ⏳ Pendiente |
+| M-6.1 | Auditoría SQL injection | 0 SQL directo en todo el plugin; 100% uso de `$DB` API de Moodle | ✅ |
+| M-6.2 | Auditoría XSS | Todo output usa `format_text()` / `format_string()`; templates Mustache escapan automáticamente | ✅ |
+| M-6.3 | Auditoría CSRF | Todos los formularios usan `sesskey`; todos los endpoints AJAX verifican `require_sesskey()` | ✅ |
+| M-6.4 | Auditoría capabilities | `require_login()` y `require_capability()` en cada punto de entrada; ningún endpoint sin protección | ✅ |
+| M-6.5 | Auditoría parámetros | `required_param()` / `optional_param()` en todos los endpoints; sin `$_GET/$_POST` directos | ✅ |
 | M-6.6 | Privacy Provider GDPR | `provider.php` implementado; datos exportables y eliminables desde admin de privacidad | ✅ |
-| M-6.7 | PHPUnit cobertura core | >80% cobertura en `subscription_manager`, `mentorship_manager`, `role_manager`, `enrolment_sync` | ⏳ Pendiente |
-| M-6.8 | Behat: flujo E2E suscripción | Mentor compra → sistema activa → mentor ve dashboard correcto con límite | ⏳ Pendiente |
-| M-6.9 | Behat: flujo E2E mentorado | Agregar mentorado → ve cursos → mentor desactiva → pierde acceso inmediato | ⏳ Pendiente |
-| M-6.10 | Behat: flujo E2E límite | Agregar hasta límite → card de upgrade aparece → no se puede agregar más | ⏳ Pendiente |
-| M-6.11 | Behat: flujo E2E expiración | Suscripción expira → todos los mentorados des-matriculados automáticamente | ⏳ Pendiente |
-| M-6.12 | Documentación: `.lms_dev/design_notes.md` | Decisiones arquitectónicas documentadas con justificaciones y alternativas consideradas | ⏳ Pendiente |
-| M-6.13 | Documentación: `.lms_dev/api_map.md` | Todos los endpoints AJAX, webhooks y servicios externos mapeados con firma y respuesta | ⏳ Pendiente |
-| M-6.14 | Code review final | Sin warnings PHP 8.1; sin deprecated API Moodle 4.5; code style conforme a Moodle CS | ⏳ Pendiente |
+| M-6.7 | PHPUnit cobertura core | >80% cobertura en `subscription_manager`, `mentorship_manager`, `role_manager`, `enrolment_sync` | ✅ |
+| M-6.8 | Behat: flujo E2E suscripción | Mentor compra → sistema activa → mentor ve dashboard correcto con límite | ✅ |
+| M-6.9 | Behat: flujo E2E mentorado | Agregar mentorado → ve cursos → mentor desactiva → pierde acceso inmediato | ✅ |
+| M-6.10 | Behat: flujo E2E límite | Agregar hasta límite → card de upgrade aparece → no se puede agregar más | ✅ |
+| M-6.11 | Behat: flujo E2E expiración | Suscripción expira → todos los mentorados des-matriculados automáticamente | ✅ |
+| M-6.12 | Documentación: `.lms_dev/design_notes.md` | Decisiones arquitectónicas documentadas con justificaciones y alternativas consideradas | ✅ |
+| M-6.13 | Documentación: `.lms_dev/api_map.md` | Todos los endpoints AJAX, webhooks y servicios externos mapeados con firma y respuesta | ✅ |
+| M-6.14 | Code review final | Sin warnings PHP 8.1; sin deprecated API Moodle 4.5; code style conforme a Moodle CS | ✅ |
 
 ---
 
