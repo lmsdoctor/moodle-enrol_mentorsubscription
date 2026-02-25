@@ -2,19 +2,37 @@
     Mentor Dashboard — main view for the authenticated mentor.
 
     Context variables (exported by classes/output/mentor_dashboard.php):
-      - has_subscription   bool
-      - subscription       object|null [status, billing_cycle, billed_price, period_end, max_mentees]
-      - mentees            array of [menteeid, fullname, email, is_active]
-      - active_count       int
-      - max_mentees        int
-      - limit_reached      bool
+      - has_subscription            bool
+      - subscription                object|null [status, billing_cycle, billed_price, period_end, max_mentees]
+      - mentees                     array of [menteeid, fullname, email, is_active]
+      - active_count                int
+      - max_mentees                 int
+      - limit_reached               bool
+      - warning_paused              bool  — true when status = 'paused'
+      - warning_cancel_period_end   bool  — true when cancel_at_period_end = 1
+      - warning_period_end_date     string — formatted period_end date
 
     @package    enrol_mentorsubscription
     @copyright  2026 ArchitectLMS Team
     @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 }}
 <div class="enrol-mentorsub-dashboard" data-region="mentor-dashboard">
-
+    {{! ── Warning Banners ─────────────────────────────────────────────── }}
+    {{#warning_paused}}
+    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+        <span class="fa fa-pause-circle me-2" aria-hidden="true"></span>
+        <div>{{#str}} dashboard_warning_paused, enrol_mentorsubscription {{/str}}</div>
+    </div>
+    {{/warning_paused}}
+    {{#warning_cancel_period_end}}
+    <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+        <span class="fa fa-exclamation-triangle me-2" aria-hidden="true"></span>
+        <div>
+            {{#str}} dashboard_warning_cancel_period_end, enrol_mentorsubscription {{/str}}
+            <strong>{{warning_period_end_date}}</strong>.
+        </div>
+    </div>
+    {{/warning_cancel_period_end}}
     {{! ── Subscription Summary Card ────────────────────────────────── }}
     <div class="card mb-4">
         <div class="card-header">

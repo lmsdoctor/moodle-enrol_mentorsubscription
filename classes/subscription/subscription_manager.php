@@ -54,6 +54,26 @@ class subscription_manager {
     }
 
     /**
+     * Returns the current live subscription for a mentor (active OR paused), or null.
+     *
+     * Used by the dashboard so paused mentors can still see their panel with a banner.
+     * Use get_active_subscription() everywhere else where 'active' semantics are needed.
+     *
+     * @param int $userid Mentor user ID.
+     * @return \stdClass|null Subscription record or null.
+     */
+    public function get_current_subscription(int $userid): ?\stdClass {
+        global $DB;
+        $sql = "SELECT *
+                  FROM {enrol_mentorsub_subscriptions}
+                 WHERE userid = :uid
+                   AND status IN ('active', 'paused')
+              ORDER BY timecreated DESC
+                 LIMIT 1";
+        return $DB->get_record_sql($sql, ['uid' => $userid]) ?: null;
+    }
+
+    /**
      * Returns the full payment history for a mentor, newest first.
      *
      * @param int $userid Mentor user ID.
@@ -121,7 +141,12 @@ class subscription_manager {
             'timemodified'           => $now,
         ];
 
-        return $DB->insert_record('enrol_mentorsub_subscriptions', $record);
+        $newId = $DB->insert_record('enrol_mentorsub_subscriptions', $record);
+
+        // Enrol the mentor in all subscription-gated courses.
+        (new \enrol_mentorsubscription\mentorship\enrolment_sync())->enrol_mentor($userid);
+
+        return $newId;
     }
 
     /**
@@ -233,13 +258,15 @@ class subscription_manager {
             throw $e;
         }
 
-        // 3. Unenrol mentees OUTSIDE the transaction (enrol API has its own transactions).
+        // 3. Unenrol mentees and mentor OUTSIDE the transaction (enrol API has its own transactions).
+        $sync = new \enrol_mentorsubscription\mentorship\enrolment_sync();
         if (!empty($mentees)) {
-            $sync = new \enrol_mentorsubscription\mentorship\enrolment_sync();
             foreach ($mentees as $mentee) {
                 $sync->unenrol_mentee((int) $mentee->menteeid);
             }
         }
+        // Unenrol the mentor from all subscription courses.
+        $sync->unenrol_mentor((int) $subscription->userid);
     }
 
     // =========================================================================

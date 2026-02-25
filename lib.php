@@ -164,4 +164,46 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
             $this->unenrol_user($instance, $menteeid);
         }
     }
+
+    /**
+     * Enrols a mentor into a course using this plugin's instance.
+     *
+     * Uses the configured mentorroleid (e.g. Non-editing teacher).
+     *
+     * @param int $mentorid  Moodle user ID of the mentor.
+     * @param int $courseid  Moodle course ID.
+     * @param int $roleid    Role to assign (defaults to the configured mentor role).
+     * @return void
+     */
+    public function enrol_mentor(int $mentorid, int $courseid, int $roleid = 0): void {
+        if ($roleid === 0) {
+            $roleid = (int) get_config('enrol_mentorsubscription', 'mentorroleid');
+        }
+
+        $instance = $this->get_or_create_instance($courseid);
+        $this->enrol_user($instance, $mentorid, $roleid);
+    }
+
+    /**
+     * Unenrols a mentor from a course managed by this plugin.
+     *
+     * Only touches enrolments created by this plugin.
+     *
+     * @param int $mentorid  Moodle user ID of the mentor.
+     * @param int $courseid  Moodle course ID.
+     * @return void
+     */
+    public function unenrol_mentor(int $mentorid, int $courseid): void {
+        global $DB;
+
+        $instance = $DB->get_record('enrol', [
+            'courseid' => $courseid,
+            'enrol'    => $this->get_name(),
+            'status'   => ENROL_INSTANCE_ENABLED,
+        ]);
+
+        if ($instance) {
+            $this->unenrol_user($instance, $mentorid);
+        }
+    }
 }

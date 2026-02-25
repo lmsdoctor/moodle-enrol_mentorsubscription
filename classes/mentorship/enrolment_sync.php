@@ -108,4 +108,66 @@ class enrolment_sync {
             }
         }
     }
+
+    /**
+     * Enrols a mentor in all courses managed by this plugin.
+     *
+     * Called when a new subscription is activated (checkout.session.completed).
+     *
+     * @param int $mentorid Mentor user ID.
+     * @return void
+     */
+    public function enrol_mentor(int $mentorid): void {
+        global $DB;
+
+        $courses = $DB->get_records('enrol_mentorsub_courses', [], 'sortorder ASC');
+
+        if (empty($courses)) {
+            return;
+        }
+
+        /** @var \enrol_mentorsubscription_plugin $plugin */
+        $plugin = enrol_get_plugin('mentorsubscription');
+
+        foreach ($courses as $course) {
+            try {
+                $plugin->enrol_mentor($mentorid, (int) $course->courseid);
+            } catch (\Throwable $e) {
+                debugging(
+                    "enrol_mentorsubscription: failed to enrol mentor {$mentorid} " .
+                    "in course {$course->courseid}: " . $e->getMessage(),
+                    DEBUG_DEVELOPER
+                );
+            }
+        }
+    }
+
+    /**
+     * Unenrols a mentor from all courses managed by this plugin.
+     *
+     * Called when a subscription is cancelled or expires.
+     *
+     * @param int $mentorid Mentor user ID.
+     * @return void
+     */
+    public function unenrol_mentor(int $mentorid): void {
+        global $DB;
+
+        $courses = $DB->get_records('enrol_mentorsub_courses', []);
+
+        /** @var \enrol_mentorsubscription_plugin $plugin */
+        $plugin = enrol_get_plugin('mentorsubscription');
+
+        foreach ($courses as $course) {
+            try {
+                $plugin->unenrol_mentor($mentorid, (int) $course->courseid);
+            } catch (\Throwable $e) {
+                debugging(
+                    "enrol_mentorsubscription: failed to unenrol mentor {$mentorid} " .
+                    "from course {$course->courseid}: " . $e->getMessage(),
+                    DEBUG_DEVELOPER
+                );
+            }
+        }
+    }
 }

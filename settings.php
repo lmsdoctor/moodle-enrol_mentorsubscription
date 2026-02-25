@@ -118,6 +118,18 @@ if ($ADMIN->fulltree) {
         ));
     }
 
+    // Mentor role ID used when enrolling mentors into courses.
+    if (!during_initial_install()) {
+        $roles = get_default_enrol_roles(context_system::instance());
+        $settings->add(new admin_setting_configselect(
+            'enrol_mentorsubscription/mentorroleid',
+            get_string('settings_mentorroleid', 'enrol_mentorsubscription'),
+            get_string('settings_mentorroleid_desc', 'enrol_mentorsubscription'),
+            0,
+            $roles
+        ));
+    }
+
     // Comma-separated list of course IDs included in the subscription.
     // (Runtime management via admin panel UI in M-4; this is the initial fallback.)
     $settings->add(new admin_setting_configtext(

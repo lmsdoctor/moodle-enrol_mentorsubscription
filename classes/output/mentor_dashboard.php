@@ -44,13 +44,18 @@ class mentor_dashboard implements \renderable, \templatable {
     /** @var array List of mentee records with user data. */
     private array $mentees;
 
+    /** @var string|null Warning type: null | 'paused' | 'cancel_at_period_end' */
+    private ?string $warningType;
+
     /**
-     * @param \stdClass|null $subscription Active subscription or null.
-     * @param array          $mentees      Array of mentee+user records.
+     * @param \stdClass|null $subscription  Active or paused subscription, or null.
+     * @param array          $mentees       Array of mentee+user records.
+     * @param string|null    $warningType   'paused' | 'cancel_at_period_end' | null.
      */
-    public function __construct(?\stdClass $subscription, array $mentees) {
+    public function __construct(?\stdClass $subscription, array $mentees, ?string $warningType = null) {
         $this->subscription = $subscription;
         $this->mentees      = $mentees;
+        $this->warningType  = $warningType;
     }
 
     /**
@@ -63,12 +68,17 @@ class mentor_dashboard implements \renderable, \templatable {
      */
     public function export_for_template(renderer_base $output): array {
         $ctx = [
-            'has_subscription'  => !is_null($this->subscription),
-            'subscription'      => null,
-            'mentees'           => [],
-            'limit_reached'     => false,
-            'active_count'      => 0,
-            'max_mentees'       => 0,
+            'has_subscription'          => !is_null($this->subscription),
+            'subscription'              => null,
+            'mentees'                   => [],
+            'limit_reached'             => false,
+            'active_count'              => 0,
+            'max_mentees'               => 0,
+            'warning_paused'            => ($this->warningType === 'paused'),
+            'warning_cancel_period_end' => ($this->warningType === 'cancel_at_period_end'),
+            'warning_period_end_date'   => ($this->subscription
+                                            ? userdate($this->subscription->period_end)
+                                            : ''),
         ];
 
         if ($this->subscription) {

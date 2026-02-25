@@ -287,3 +287,12 @@ $string['change_plan']                       = 'Change plan';
 $string['subscription_status_paused']        = 'Paused';
 $string['subscription_status_cancelled']     = 'Cancelled';
 $string['subscription_cancel_warning']       = 'Cancelling immediately will unenrol all mentees. This cannot be undone.';
+
+// -------------------------------------------------------------------------
+// Mentor role & dashboard access control
+// -------------------------------------------------------------------------
+$string['settings_mentorroleid']                 = 'Mentor role';
+$string['settings_mentorroleid_desc']            = 'Role assigned to mentors when enrolled in subscription courses (e.g. Non-editing teacher).';
+$string['dashboard_no_subscription']             = 'No active subscription found. Please subscribe to access the mentor panel.';
+$string['dashboard_warning_paused']              = 'Your subscription is currently paused. Resume your subscription to continue using all mentor features.';
+$string['dashboard_warning_cancel_period_end']   = 'Your subscription is set to cancel on';

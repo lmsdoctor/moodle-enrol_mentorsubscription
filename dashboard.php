@@ -56,15 +56,34 @@ $PAGE->requires->js_call_amd('enrol_mentorsubscription/mentor_dashboard', 'init'
 $subManager    = new subscription_manager();
 $mentorManager = new mentorship_manager();
 
-$subscription = $subManager->get_active_subscription((int) $USER->id);
-$mentees      = $mentorManager->get_mentees((int) $USER->id);
+$subscription = $subManager->get_current_subscription((int) $USER->id);
+
+// Access control: no active/paused subscription → redirect to subscribe page.
+if (is_null($subscription)) {
+    redirect(
+        new moodle_url('/enrol/mentorsubscription/subscribe.php'),
+        get_string('dashboard_no_subscription', 'enrol_mentorsubscription'),
+        null,
+        \core\output\notification::NOTIFY_WARNING
+    );
+}
+
+// Determine warning banner type for the template.
+$warningType = null;
+if ($subscription->status === 'paused') {
+    $warningType = 'paused';
+} elseif ((int) ($subscription->cancel_at_period_end ?? 0) === 1) {
+    $warningType = 'cancel_at_period_end';
+}
+
+$mentees = $mentorManager->get_mentees((int) $USER->id);
 
 // -------------------------------------------------------------------------
 // Render
 // -------------------------------------------------------------------------
 echo $OUTPUT->header();
 
-$renderable = new dashboard_renderable($subscription, $mentees);
+$renderable = new dashboard_renderable($subscription, $mentees, $warningType);
 echo $OUTPUT->render($renderable);
 
 echo $OUTPUT->footer();
