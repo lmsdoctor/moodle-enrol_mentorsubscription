@@ -49,6 +49,16 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
     }
 
     /**
+     * Roles are NOT protected — users with role-assign capability can adjust
+     * roles on enrolments created by this plugin without restriction.
+     *
+     * @return bool
+     */
+    public function roles_protected(): bool {
+        return false;
+    }
+
+    /**
      * This plugin does not allow manual enrolment from the standard course
      * enrolment manager. Access is controlled exclusively through the mentor
      * dashboard and the Stripe subscription flow.
@@ -62,7 +72,8 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
 
     /**
      * Unenrolment is handled programmatically by mentorship_manager and the
-     * Stripe webhook processor. Disable the standard UI unenrol button.
+     * Stripe webhook processor. Disable the standard UI unenrol button to
+     * prevent bypassing our enrol_mentorsub_mentees sync logic.
      *
      * @param stdClass $instance Enrolment instance.
      * @return bool
@@ -72,24 +83,56 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
     }
 
     /**
-     * Managers should not be able to edit instances from the standard enrolment
-     * manager; configuration lives in plugin settings and the admin panel.
+     * Allow admins to enable/disable this plugin's instance from the standard
+     * course enrolment methods UI (e.g. to temporarily suspend access).
      *
      * @param stdClass $instance Enrolment instance.
      * @return bool
      */
     public function allow_manage(stdClass $instance): bool {
-        return false;
+        return true;
     }
 
     /**
-     * Prevent showing up in the standard "Add enrolment method" dropdown on a
-     * per-course basis. This plugin is applied globally at system level.
+     * Never show the "Enrol me" self-enrolment link.
+     * Users subscribe exclusively through the Stripe checkout flow.
      *
+     * @param stdClass $instance Enrolment instance.
      * @return bool
      */
+    public function show_enrolme_link(stdClass $instance): bool {
+        return (bool) $instance->status == ENROL_INSTANCE_ENABLED;
+    }
+
+    /**
+     * Allow site administrators to add this plugin instance to any course.
+     *
+     * The instance is created automatically on first mentee/mentor enrolment,
+     * but admins may also add it manually from the course enrolment methods UI.
+     * The plugin controls access through subscription status, not through the
+     * standard allow_enrol / allow_unenrol buttons.
+     *
+     * @param int $courseid Moodle course ID.
+     * @return bool True when the current user can add an instance.
+     */
     public function can_add_instance($courseid): bool {
-        return false;
+        $context = context_course::instance($courseid, IGNORE_MISSING);
+        if (!$context) {
+            return false;
+        }
+        return has_capability('moodle/course:enrolconfig', $context) ?? has_capability('enrol/mentorsubscription:config', $context);
+    }
+
+    /**
+     * Returns a human-readable name for a given enrolment instance.
+     *
+     * Shown in the course enrollment methods table.
+     *
+     * @param stdClass $instance Enrolment instance record.
+     * @return string
+     */
+    public function get_instance_name($instance): string {
+        return get_string('pluginname', 'enrol_mentorsubscription');
     }
 
     // -------------------------------------------------------------------------
