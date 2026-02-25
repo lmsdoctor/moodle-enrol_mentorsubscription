@@ -386,8 +386,8 @@ SCHEDULED TASKS
 
 ## 6. Roadmap de Desarrollo
 
-> **Progreso global al 24/Feb/2026:** M-0 ✅ M-1 ✅ M-2 ✅ M-3 ✅ M-4 ⚠️ M-5 ✅ M-6 🔴
-> **Pendiente crítico:** M-2.9 (`get_history`), M-4.7 (CRUD sub_types), M-4.10 (historial admin), M-5.7 (`past_due` grace period), todos los PHPUnit y Behat (M-6.7–M-6.11).
+> **Progreso global al 24/Feb/2026:** M-0 ✅ M-1 ✅ M-2 ✅ M-3 ✅ M-4 ✅ M-5 ✅ M-6 🔴
+> **Pendiente crítico:** Todos los PHPUnit y Behat (M-6.7–M-6.11), auditorías de seguridad (M-6.1–6.5), documentación (M-6.12–13).
 
 ### Resumen de Hitos
 
@@ -397,7 +397,7 @@ SCHEDULED TASKS
 | M-1 | Parent Role Programático | Semana 1–2 | M-0 | ✅ Completo |
 | M-2 | Suscripción y Pago Stripe | Semana 2–3 | M-0, M-1 | ✅ Completo |
 | M-3 | Gestión de Mentorados | Semana 3–4 | M-0, M-1, M-2 | ✅ Completo |
-| M-4 | Interfaces de Usuario | Semana 4–5 | M-2, M-3 | ⚠️ Parcial |
+| M-4 | Interfaces de Usuario | Semana 4–5 | M-2, M-3 | ✅ Completo |
 | M-5 | Automatización y Notificaciones | Semana 5 | M-2, M-3 | ✅ Completo |
 | M-6 | Hardening, Testing y Entrega | Semana 6 | M-0 al M-5 | 🔴 Pendiente |
 
@@ -455,7 +455,7 @@ SCHEDULED TASKS
 | M-2.6 | `webhook.php`: `invoice.paid` (renovación) | `process_renewal()`: anterior pasa a `superseded`; nuevo registro `active` creado en transacción | ✅ |
 | M-2.7 | `webhook.php`: `invoice.payment_failed` | `status` cambia a `past_due`; mentor recibe notificación vía Messaging API | ✅ |
 | M-2.8 | `webhook.php`: `customer.subscription.deleted` | `status=expired`; `unenrol_mentee()` ejecutado para todos los mentorados en transacción | ✅ |
-| M-2.9 | `subscription_manager::get_history()` | Admin consulta todos los ciclos de un mentor ordenados por `timecreated DESC` | ⏳ Pendiente |
+| M-2.9 | `subscription_manager::get_history()` | Admin consulta todos los ciclos de un mentor ordenados por `timecreated DESC` | ✅ |
 | M-2.10 | Verificación de firma Stripe | Webhook rechaza requests sin firma HMAC válida; retorna `HTTP 400` | ✅ |
 | M-2.11 | PHPUnit: `subscription_manager` + `pricing_manager` | Tests: snapshot inmutable, renovación, override chain, historial, todos los estados | 🔴 Pendiente M-6 |
 
@@ -481,8 +481,8 @@ SCHEDULED TASKS
 
 ---
 
-### M-4 — Interfaces de Usuario ⚠️
-`Semana 4–5` · Dependencias: M-2, M-3 · **Estado: Parcial — faltan M-4.7 y M-4.10**
+### M-4 — Interfaces de Usuario ✅
+`Semana 4–5` · Dependencias: M-2, M-3 · **Estado: Completo**
 
 **Objetivo:** Implementar todas las interfaces de usuario para mentor y administrador usando Renderables y templates Mustache, siguiendo los Moodle Development Standards de Moodle 4.x.
 
@@ -494,10 +494,10 @@ SCHEDULED TASKS
 | M-4.4 | Card de límite alcanzado | Aparece solo cuando `activos >= billed_max_mentees`; CTA para contactar admin | ✅ |
 | M-4.5 | Formulario: agregar mentorado | Búsqueda con autocomplete de usuario Moodle; muestra avatar y nombre antes de confirmar | ✅ |
 | M-4.6 | Panel Admin: configuración global | Admin define precio mensual/anual, límite global, IDs de cursos, días de aviso | ✅ |
-| M-4.7 | Panel Admin: CRUD de tipos de suscripción | Gestión completa de `sub_types` con `stripe_price_id`; activar/desactivar sin eliminar | ⏳ Pendiente |
+| M-4.7 | Panel Admin: CRUD de tipos de suscripción | Gestión completa de `sub_types` con `stripe_price_id`; activar/desactivar sin eliminar | ✅ |
 | M-4.8 | Panel Admin: lista de mentores activos | Tabla con mentor, tipo, ciclo, activos/límite, período actual, fecha próximo cobro | ✅ |
 | M-4.9 | Panel Admin: override por mentor | Formulario edita `price_override`, `max_mentees_override`, `valid_from/until`, `admin_notes` | ✅ |
-| M-4.10 | Panel Admin: historial de pagos por mentor | Lista de ciclos con fecha, precio cobrado, límite, `stripe_invoice_id`, estado | ⏳ Pendiente (requiere M-2.9) |
+| M-4.10 | Panel Admin: historial de pagos por mentor | Lista de ciclos con fecha, precio cobrado, límite, `stripe_invoice_id`, estado | ✅ |
 | M-4.11 | Todos los templates en Mustache | Sin PHP en templates; datos vía Renderable; compatible con Boost y Classic themes | ✅ |
 | M-4.12 | Endpoints AJAX con AJAX API de Moodle | Todos los servicios declarados en `db/services.php` con capabilities correctas | ✅ |
 
@@ -516,7 +516,7 @@ SCHEDULED TASKS
 | M-5.4 | Notificación al agregar mentorado | Mentor y mentorado reciben mensaje con nombre del otro y link al curso | ✅ |
 | M-5.5 | Notificación al desactivar mentorado | Mentorado notificado de pérdida de acceso temporal | ✅ |
 | M-5.6 | Task: `sync_stripe_subscriptions` (horaria) | Consulta Stripe API; sincroniza `status` si difiere de DB; log de cambios detectados | ✅ |
-| M-5.7 | Manejo de `past_due`: período de gracia | Suscripción `past_due` mantiene acceso N días configurables antes de marcar `expired` | ⏳ Pendiente |
+| M-5.7 | Manejo de `past_due`: período de gracia | Suscripción `past_due` mantiene acceso N días configurables antes de marcar `expired` | ✅ |
 | M-5.8 | PHPUnit: `notification_manager` + tasks | Tests: no duplicar notificación, envío correcto, task detecta suscripciones correctamente | 🔴 Pendiente M-6 |
 
 ---
