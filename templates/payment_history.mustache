@@ -1,0 +1,89 @@
+{{!
+    Payment History Panel — Per-mentor billing ledger view.
+
+    Context variables (exported by classes/output/payment_history_panel.php):
+      - fullname    string  Mentor full name
+      - userid      int     Mentor user ID
+      - back_url    string  URL back to admin panel
+      - has_history bool    True when at least one record exists
+      - history     array of {
+            id, status, status_label, billing_cycle,
+            billed_price, billed_max_mentees,
+            period_start, period_end,
+            stripe_invoice_id, stripe_subscription_id,
+            timecreated, is_active, is_past_due, is_expired
+        }
+
+    @package    enrol_mentorsubscription
+    @copyright  2026 LMS Doctor <info@lmsdoctor.com>
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="enrol-mentorsub-history" data-region="payment-history">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>
+            {{#str}} adminpanel_paymenthistory, enrol_mentorsubscription {{/str}}
+            — {{fullname}}
+        </h2>
+        <a href="{{back_url}}" class="btn btn-secondary btn-sm">
+            &larr; {{#str}} back_to_admin, enrol_mentorsubscription {{/str}}
+        </a>
+    </div>
+
+    {{#has_history}}
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>{{#str}} history_col_created, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} history_col_period, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} history_col_cycle, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} history_col_price, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} history_col_limit, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} history_col_status, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} history_col_invoice, enrol_mentorsubscription {{/str}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#history}}
+                    <tr>
+                        <td>{{timecreated}}</td>
+                        <td class="text-nowrap">{{period_start}} → {{period_end}}</td>
+                        <td>{{billing_cycle}}</td>
+                        <td>${{billed_price}}</td>
+                        <td>{{billed_max_mentees}}</td>
+                        <td>
+                            {{#is_active}}
+                                <span class="badge badge-success">{{status_label}}</span>
+                            {{/is_active}}
+                            {{#is_past_due}}
+                                <span class="badge badge-warning">{{status_label}}</span>
+                            {{/is_past_due}}
+                            {{#is_expired}}
+                                <span class="badge badge-secondary">{{status_label}}</span>
+                            {{/is_expired}}
+                            {{^is_active}}{{^is_past_due}}{{^is_expired}}
+                                <span class="badge badge-light">{{status_label}}</span>
+                            {{/is_expired}}{{/is_past_due}}{{/is_active}}
+                        </td>
+                        <td>
+                            {{#stripe_invoice_id}}
+                                <code class="small">{{stripe_invoice_id}}</code>
+                            {{/stripe_invoice_id}}
+                        </td>
+                    </tr>
+                    {{/history}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{/has_history}}
+
+    {{^has_history}}
+    <div class="alert alert-info">
+        {{#str}} history_no_records, enrol_mentorsubscription {{/str}}
+    </div>
+    {{/has_history}}
+
+</div>

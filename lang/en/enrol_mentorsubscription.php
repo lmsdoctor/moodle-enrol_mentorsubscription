@@ -226,6 +226,42 @@ $string['override_saved']              = 'Override saved successfully.';
 $string['mentee_activate']             = 'Toggle mentee status';
 
 // -------------------------------------------------------------------------
+// Sub Type form fields (M-4.7)
+// -------------------------------------------------------------------------
+$string['subtype_name']              = 'Plan name';
+$string['subtype_billing_cycle']     = 'Billing cycle';
+$string['subtype_price']             = 'Price';
+$string['subtype_max_mentees']       = 'Default mentee limit';
+$string['subtype_stripe_price_id']   = 'Stripe Price ID';
+$string['subtype_stripe_price_id_help'] = 'The Price ID from your Stripe dashboard (e.g. price_1ABC...).';
+$string['subtype_description']       = 'Description';
+$string['subtype_sort_order']        = 'Sort order';
+$string['subtype_is_active']         = 'Active';
+$string['subtype_add_heading']       = 'Add Subscription Type';
+$string['subtype_edit_heading']      = 'Edit Subscription Type';
+$string['subtype_saved']             = 'Subscription type saved successfully.';
+$string['subtype_toggle_saved']      = 'Subscription type status updated.';
+$string['subtype_activate']          = 'Activate';
+$string['subtype_deactivate']        = 'Deactivate';
+$string['subtype_none']              = 'No subscription types defined. Click “Add Subscription Type” to create one.';
+$string['subtype_error_price']       = 'Price must be a positive number.';
+$string['subtype_error_max_mentees'] = 'Mentee limit must be at least 1.';
+
+// -------------------------------------------------------------------------
+// Payment history view (M-4.10)
+// -------------------------------------------------------------------------
+$string['history_col_created']  = 'Created';
+$string['history_col_period']   = 'Billing period';
+$string['history_col_cycle']    = 'Cycle';
+$string['history_col_price']    = 'Price charged';
+$string['history_col_limit']    = 'Mentee limit';
+$string['history_col_status']   = 'Status';
+$string['history_col_invoice']  = 'Stripe Invoice ID';
+$string['history_col_mentor']   = 'Mentor';
+$string['history_no_records']   = 'No payment records found for this mentor.';
+$string['back_to_admin']        = 'Back to admin panel';
+
+// -------------------------------------------------------------------------
 // Messaging API provider
 // -------------------------------------------------------------------------
 $string['messageprovider:notification'] = 'Mentor Subscription notifications (expiry warnings, mentee enrolments)';

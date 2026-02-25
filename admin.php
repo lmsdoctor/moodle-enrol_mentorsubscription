@@ -30,7 +30,10 @@
 require_once(__DIR__ . '/../../config.php');
 
 use enrol_mentorsubscription\output\admin_subscription_panel as panel_renderable;
+use enrol_mentorsubscription\output\payment_history_panel;
 use enrol_mentorsubscription\form\admin_subscription_form;
+use enrol_mentorsubscription\form\sub_type_form;
+use enrol_mentorsubscription\subscription\subscription_manager;
 
 require_login();
 
@@ -54,8 +57,79 @@ $overrideId = optional_param('overrideid', 0, PARAM_INT);
 $targetUser = optional_param('userid',    0, PARAM_INT);
 $subtypeId  = optional_param('subtypeid', 0, PARAM_INT);
 
-$overrideForm = null;
+$overrideForm  = null;
+$subtypeForm   = null;
+$historyPanel  = null;
 
+// -------------------------------------------------------------------------
+// Sub-type toggle (no form — immediate action + redirect).
+// -------------------------------------------------------------------------
+if ($formAction === 'togglesubtype' && $subtypeId) {
+    require_sesskey();
+    $rec = $DB->get_record('enrol_mentorsub_sub_types', ['id' => $subtypeId], '*', MUST_EXIST);
+    $DB->set_field('enrol_mentorsub_sub_types', 'is_active',    (int)!$rec->is_active, ['id' => $subtypeId]);
+    $DB->set_field('enrol_mentorsub_sub_types', 'timemodified', time(),                ['id' => $subtypeId]);
+    redirect(
+        new moodle_url('/enrol/mentorsubscription/admin.php'),
+        get_string('subtype_toggle_saved', 'enrol_mentorsubscription'),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
+}
+
+// -------------------------------------------------------------------------
+// Sub-type create / edit form.
+// -------------------------------------------------------------------------
+if ($formAction === 'editsubtype') {
+    $subtypeForm = new sub_type_form(
+        new moodle_url('/enrol/mentorsubscription/admin.php', ['formaction' => 'editsubtype'])
+    );
+
+    if ($subtypeForm->is_cancelled()) {
+        redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+    }
+
+    if ($data = $subtypeForm->get_data()) {
+        $now = time();
+        if (!empty($data->id)) {
+            // Update existing record.
+            $data->timemodified = $now;
+            $DB->update_record('enrol_mentorsub_sub_types', $data);
+        } else {
+            // Insert new record.
+            $data->timecreated  = $now;
+            $data->timemodified = $now;
+            $DB->insert_record('enrol_mentorsub_sub_types', $data);
+        }
+        redirect(
+            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            get_string('subtype_saved', 'enrol_mentorsubscription'),
+            null,
+            \core\output\notification::NOTIFY_SUCCESS
+        );
+    }
+
+    // Pre-fill form for edits.
+    if ($subtypeId) {
+        $existing = $DB->get_record('enrol_mentorsub_sub_types', ['id' => $subtypeId]);
+        if ($existing) {
+            $subtypeForm->set_data($existing);
+        }
+    }
+}
+
+// -------------------------------------------------------------------------
+// Payment history view for a specific mentor.
+// -------------------------------------------------------------------------
+if ($formAction === 'viewhistory' && $targetUser) {
+    $mentor = $DB->get_record('user', ['id' => $targetUser], 'id,firstname,lastname,email', MUST_EXIST);
+    $history = (new subscription_manager())->get_history($targetUser);
+    $historyPanel = new payment_history_panel($mentor, $history);
+}
+
+// -------------------------------------------------------------------------
+// Override form.
+// -------------------------------------------------------------------------
 if ($formAction === 'editoverride') {
     // Build the form bound to the existing override (or empty for a new one).
     $formData  = null;
@@ -124,9 +198,21 @@ $activeMentors = array_values($DB->get_records_sql($sql));
 // -------------------------------------------------------------------------
 echo $OUTPUT->header();
 
-if ($overrideForm) {
+if ($subtypeForm) {
+    $isEdit = (bool) $subtypeId;
+    echo $OUTPUT->heading(
+        get_string($isEdit ? 'subtype_edit_heading' : 'subtype_add_heading', 'enrol_mentorsubscription'),
+        3
+    );
+    $subtypeForm->display();
+
+} elseif ($historyPanel) {
+    echo $OUTPUT->render($historyPanel);
+
+} elseif ($overrideForm) {
     echo $OUTPUT->heading(get_string('adminpanel_overrides', 'enrol_mentorsubscription'), 3);
     $overrideForm->display();
+
 } else {
     $renderable = new panel_renderable(array_values($subtypes), $activeMentors);
     echo $OUTPUT->render($renderable);

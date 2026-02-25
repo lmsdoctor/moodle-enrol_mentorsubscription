@@ -2,8 +2,11 @@
     Admin Panel — Mentor Subscription administration view.
 
     Context variables (exported by classes/output/admin_subscription_panel.php):
-      - subtypes       array of { id, name, billing_cycle, price, max_mentees, stripe_price_id, is_active }
-      - active_mentors array of { userid, fullname, status, billing_cycle, period_end, billed_price, max_mentees }
+      - subtypes       array of { id, name, billing_cycle, price, max_mentees, stripe_price_id,
+                                  is_active, edit_url, toggle_url }
+      - active_mentors array of { userid, subtypeid, fullname, status, billing_cycle, period_end,
+                                  billed_price, max_mentees, admin_url, history_url }
+      - add_subtype_url string   URL to create a new subscription type
 
     @package    enrol_mentorsubscription
     @copyright  2026 ArchitectLMS Team
@@ -17,18 +20,20 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title mb-0">{{#str}} adminpanel_subtypes, enrol_mentorsubscription {{/str}}</h3>
-            <a href="#" class="btn btn-sm btn-primary">+ Add type</a>
+            <a href="{{add_subtype_url}}" class="btn btn-sm btn-primary">
+                + {{#str}} subtype_add_heading, enrol_mentorsubscription {{/str}}
+            </a>
         </div>
         <div class="card-body p-0">
             <table class="table table-sm table-hover mb-0">
                 <thead class="thead-light">
                     <tr>
-                        <th>Name</th>
-                        <th>Cycle</th>
-                        <th>Price</th>
-                        <th>Limit</th>
+                        <th>{{#str}} subtype_name, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} subtype_billing_cycle, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} subtype_price, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} subtype_max_mentees, enrol_mentorsubscription {{/str}}</th>
                         <th>Stripe Price ID</th>
-                        <th>Active</th>
+                        <th>{{#str}} subtype_is_active, enrol_mentorsubscription {{/str}}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -44,13 +49,19 @@
                             {{#is_active}}<span class="badge badge-success">Yes</span>{{/is_active}}
                             {{^is_active}}<span class="badge badge-secondary">No</span>{{/is_active}}
                         </td>
-                        <td>
-                            <a href="#" data-action="edit-subtype" data-id="{{id}}">Edit</a>
+                        <td class="text-nowrap">
+                            <a href="{{edit_url}}">{{#str}} edit, core {{/str}}</a>
+                            &middot;
+                            <a href="{{toggle_url}}"
+                               onclick="return confirm('Toggle active status?');">
+                                {{#is_active}}{{#str}} subtype_deactivate, enrol_mentorsubscription {{/str}}{{/is_active}}
+                                {{^is_active}}{{#str}} subtype_activate, enrol_mentorsubscription {{/str}}{{/is_active}}
+                            </a>
                         </td>
                     </tr>
                     {{/subtypes}}
                     {{^subtypes}}
-                    <tr><td colspan="7" class="text-center text-muted py-3">No subscription types defined.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-3">{{#str}} subtype_none, enrol_mentorsubscription {{/str}}</td></tr>
                     {{/subtypes}}
                 </tbody>
             </table>
@@ -66,7 +77,7 @@
             <table class="table table-sm table-hover mb-0">
                 <thead class="thead-light">
                     <tr>
-                        <th>Mentor</th>
+                        <th>{{#str}} history_col_mentor, enrol_mentorsubscription {{/str}}</th>
                         <th>Status</th>
                         <th>Cycle</th>
                         <th>Price</th>
@@ -84,8 +95,10 @@
                         <td>${{billed_price}}</td>
                         <td>— / {{max_mentees}}</td>
                         <td>{{period_end}}</td>
-                        <td>
+                        <td class="text-nowrap">
                             <a href="{{admin_url}}?formaction=editoverride&userid={{userid}}&subtypeid={{subtypeid}}">Override</a>
+                            &middot;
+                            <a href="{{history_url}}">{{#str}} adminpanel_paymenthistory, enrol_mentorsubscription {{/str}}</a>
                         </td>
                     </tr>
                     {{/active_mentors}}

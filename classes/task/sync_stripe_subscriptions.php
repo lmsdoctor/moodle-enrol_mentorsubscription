@@ -112,6 +112,22 @@ class sync_stripe_subscriptions extends \core\task\scheduled_task {
                 $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', time(), ['id' => $local->id]);
                 $synced++;
             }
+
+            // M-5.7 — past_due grace period: expire locally even if Stripe still shows past_due.
+            // Only trigger when Stripe itself has NOT canceled (handled above),
+            // i.e. local is still past_due after the sync step.
+            if ($local->status === 'past_due' && !in_array($stripeStatus, ['canceled', 'unpaid'], true)) {
+                $graceDays = (int) get_config('enrol_mentorsubscription', 'pastdue_grace_days');
+                if ($graceDays > 0) {
+                    // timemodified was last updated when status changed to past_due.
+                    $graceDeadline = (int) $local->timemodified + ($graceDays * DAYSECS);
+                    if (time() > $graceDeadline) {
+                        $subManager->expire_subscription((int) $local->id);
+                        $expired++;
+                        mtrace("  Grace period exceeded — expired subscription {$local->id} (past_due for {$graceDays}+ days).");
+                    }
+                }
+            }
         }
 
         mtrace("enrol_mentorsubscription: sync_stripe_subscriptions — {$synced} updated, {$expired} expired.");

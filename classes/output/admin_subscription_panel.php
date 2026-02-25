@@ -64,6 +64,7 @@ class admin_subscription_panel implements \renderable, \templatable {
     public function export_for_template(renderer_base $output): array {
         $subtypesCtx = [];
         foreach ($this->subtypes as $type) {
+            $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false);
             $subtypesCtx[] = [
                 'id'               => $type->id,
                 'name'             => format_string($type->name),
@@ -72,11 +73,15 @@ class admin_subscription_panel implements \renderable, \templatable {
                 'max_mentees'      => $type->default_max_mentees,
                 'stripe_price_id'  => $type->stripe_price_id,
                 'is_active'        => (bool) $type->is_active,
+                'edit_url'         => $adminBase . '?formaction=editsubtype&subtypeid=' . $type->id,
+                'toggle_url'       => $adminBase . '?formaction=togglesubtype&subtypeid=' . $type->id
+                                      . '&sesskey=' . sesskey(),
             ];
         }
 
         $mentorsCtx = [];
         foreach ($this->activeMentors as $sub) {
+            $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false);
             $mentorsCtx[] = [
                 'userid'         => $sub->userid,
                 'subtypeid'      => $sub->subtypeid,
@@ -86,13 +91,16 @@ class admin_subscription_panel implements \renderable, \templatable {
                 'period_end'     => userdate($sub->period_end),
                 'billed_price'   => number_format((float) $sub->billed_price, 2),
                 'max_mentees'    => $sub->billed_max_mentees,
-                'admin_url'      => (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false),
+                'admin_url'      => $adminBase,
+                'history_url'    => $adminBase . '?formaction=viewhistory&userid=' . $sub->userid,
             ];
         }
 
         return [
-            'subtypes'       => $subtypesCtx,
-            'active_mentors' => $mentorsCtx,
+            'subtypes'         => $subtypesCtx,
+            'active_mentors'   => $mentorsCtx,
+            'add_subtype_url'  => (new \moodle_url('/enrol/mentorsubscription/admin.php',
+                                    ['formaction' => 'editsubtype']))->out(false),
         ];
     }
 }
