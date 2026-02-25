@@ -134,18 +134,32 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
     }
 
     /**
+     * Whether the hide/show toggle is available for this plugin's instances.
+     *
+     * Returning true shows the 👁 icon in the course enrolment methods table,
+     * letting admins enable/disable the instance without deleting it.
+     *
+     * @param stdClass $instance Enrolment instance record.
+     * @return bool
+     */
+    public function can_hide_show_instance(stdClass $instance): bool {
+        $context = context_course::instance($instance->courseid);
+        return has_capability('enrol/mentorsubscription:config', $context);
+    }
+
+    /**
      * Build the add/edit instance form.
      *
      * This plugin has no per-instance configuration — all settings live at
      * the plugin level. The form only exposes a status toggle so admins can
      * enable or disable this instance without deleting it.
      *
-     * @param MoodleQuickForm $mform    Form object.
      * @param object          $instance Enrolment instance or empty object for new.
+     * @param MoodleQuickForm $mform    Form object.
      * @param context         $context  Course context.
      * @return void
      */
-    public function edit_instance_form($mform, $instance, $context): void {
+    public function edit_instance_form($instance, MoodleQuickForm $mform, $context): void {
         $options = [
             ENROL_INSTANCE_ENABLED  => get_string('yes'),
             ENROL_INSTANCE_DISABLED => get_string('no'),
