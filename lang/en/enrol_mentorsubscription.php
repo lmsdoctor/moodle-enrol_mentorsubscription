@@ -207,3 +207,21 @@ $string['notify_mentee_enrolled_mentee_body']    = 'You have been enrolled as a 
 
 $string['notify_mentee_deactivated_subject']     = 'Your mentee access has been temporarily suspended';
 $string['notify_mentee_deactivated_body']        = 'Your access as a mentee of {$a->mentor} has been temporarily suspended. This may be due to a change in sub­scription status. Please contact your institution for further assistance.';
+
+// -------------------------------------------------------------------------
+// Subscribe page
+// -------------------------------------------------------------------------
+$string['subscribe_title']             = 'Choose a Mentor Subscription Plan';
+$string['subscribe_select_plan']       = 'Select this plan';
+$string['subscribe_no_plans']          = 'No subscription plans are currently available. Please contact your administrator.';
+$string['subscribe_payment_success']   = 'Payment successful! Your subscription is now active.';
+$string['subscribe_payment_cancelled'] = 'Payment cancelled. You have not been charged.';
+$string['subscribe_invalid_plan']      = 'The selected subscription plan is not available.';
+$string['subscribe_mentee_limit']      = 'Up to {$a->limit} mentees';
+
+// -------------------------------------------------------------------------
+// Admin panel actions
+// -------------------------------------------------------------------------
+$string['override_saved']              = 'Override saved successfully.';
+$string['mentee_activate']             = 'Toggle mentee status';
+
