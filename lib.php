@@ -101,16 +101,13 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
      * @return bool
      */
     public function show_enrolme_link(stdClass $instance): bool {
-        return (bool) $instance->status == ENROL_INSTANCE_ENABLED;
+        return false;
     }
 
     /**
      * Allow site administrators to add this plugin instance to any course.
      *
-     * The instance is created automatically on first mentee/mentor enrolment,
-     * but admins may also add it manually from the course enrolment methods UI.
-     * The plugin controls access through subscription status, not through the
-     * standard allow_enrol / allow_unenrol buttons.
+     * Requires enrol/mentorsubscription:config capability (course context).
      *
      * @param int $courseid Moodle course ID.
      * @return bool True when the current user can add an instance.
@@ -120,13 +117,64 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
         if (!$context) {
             return false;
         }
-        return has_capability('moodle/course:enrolconfig', $context) ?? has_capability('enrol/mentorsubscription:config', $context);
+        return has_capability('enrol/mentorsubscription:config', $context);
+    }
+
+    /**
+     * Enable the Standard Editing UI so this plugin appears in the
+     * "Add enrolment method" dropdown on each course.
+     *
+     * Required by Moodle enrolment plugin API.
+     * @see https://moodledev.io/docs/5.0/apis/plugintypes/enrol#standard-editing-ui
+     *
+     * @return bool
+     */
+    public function use_standard_editing_ui(): bool {
+        return true;
+    }
+
+    /**
+     * Build the add/edit instance form.
+     *
+     * This plugin has no per-instance configuration — all settings live at
+     * the plugin level. The form only exposes a status toggle so admins can
+     * enable or disable this instance without deleting it.
+     *
+     * @param MoodleQuickForm $mform    Form object.
+     * @param object          $instance Enrolment instance or empty object for new.
+     * @param context         $context  Course context.
+     * @return void
+     */
+    public function edit_instance_form($mform, $instance, $context): void {
+        $options = [
+            ENROL_INSTANCE_ENABLED  => get_string('yes'),
+            ENROL_INSTANCE_DISABLED => get_string('no'),
+        ];
+        $mform->addElement('select', 'status',
+            get_string('status', 'enrol_mentorsubscription'), $options);
+        $mform->setDefault('status', ENROL_INSTANCE_ENABLED);
+        $mform->addHelpButton('status', 'status', 'enrol_mentorsubscription');
+    }
+
+    /**
+     * Validate the add/edit instance form data.
+     *
+     * No custom validation needed — status is a fixed select.
+     *
+     * @param array $data array of ("fieldname"=>value) of submitted data
+     * @param array $files array of uploaded files "element_name"=>tmp_file_path
+     * @param object $instance The instance data loaded from the DB.
+     * @param context $context The context of the instance we are editing
+     * @return array  Validation errors keyed by field name (empty = valid).
+     */
+    public function edit_instance_validation($data, $files, $instance, $context): array {
+        return [];
     }
 
     /**
      * Returns a human-readable name for a given enrolment instance.
      *
-     * Shown in the course enrollment methods table.
+     * Shown in the course enrolment methods table.
      *
      * @param stdClass $instance Enrolment instance record.
      * @return string

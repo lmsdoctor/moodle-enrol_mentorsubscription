@@ -87,4 +87,31 @@ $capabilities = [
         'clonepermissionsfrom' => 'moodle/site:config',
     ],
 
+    // -------------------------------------------------------------------------
+    // Capability: manage
+    // Required by allow_manage() — allows editing enrolment period/status
+    // in the participants list for enrolments created by this plugin.
+    // -------------------------------------------------------------------------
+    'enrol/mentorsubscription:manage' => [
+        'captype'      => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes'   => [
+            'manager'        => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ],
+    ],
+
+    // -------------------------------------------------------------------------
+    // Capability: config
+    // Required by can_add_instance() — allows adding/configuring plugin
+    // instances on a per-course basis from the enrolment methods UI.
+    // -------------------------------------------------------------------------
+    'enrol/mentorsubscription:config' => [
+        'captype'      => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes'   => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+
 ];

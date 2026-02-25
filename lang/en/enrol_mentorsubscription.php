@@ -296,3 +296,9 @@ $string['settings_mentorroleid_desc']            = 'Role assigned to mentors whe
 $string['dashboard_no_subscription']             = 'No active subscription found. Please subscribe to access the mentor panel.';
 $string['dashboard_warning_paused']              = 'Your subscription is currently paused. Resume your subscription to continue using all mentor features.';
 $string['dashboard_warning_cancel_period_end']   = 'Your subscription is set to cancel on';
+
+// -------------------------------------------------------------------------
+// Course instance form (Standard Editing UI)
+// -------------------------------------------------------------------------
+$string['status']      = 'Allow enrolments';
+$string['status_help'] = 'When disabled, this plugin will not enrol new users in this course and existing enrolments will be suspended.';
