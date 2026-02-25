@@ -30,14 +30,15 @@ defined('MOODLE_INTERNAL') || die();
 
 // -------------------------------------------------------------------------
 // External functions declaration.
-// Each function maps to a method in classes/external.php.
+// Each function maps to a dedicated class in classes/external/.
+// Pattern: classname = FQCN, methodname = execute (Moodle 4.x convention).
 // -------------------------------------------------------------------------
 $functions = [
 
-    // Toggle a mentee's active/inactive status (called from radio button in UI).
+    // Toggle a mentee's active/inactive status (called from toggle button in UI).
     'enrol_mentorsubscription_toggle_mentee_status' => [
-        'classname'     => 'enrol_mentorsubscription\external',
-        'methodname'    => 'toggle_mentee_status',
+        'classname'     => 'enrol_mentorsubscription\external\toggle_mentee_status',
+        'methodname'    => 'execute',
         'description'   => 'Activate or deactivate a mentee. Returns updated state.',
         'type'          => 'write',
         'ajax'          => true,
@@ -47,8 +48,8 @@ $functions = [
 
     // Add a new mentee to the mentor's list.
     'enrol_mentorsubscription_add_mentee' => [
-        'classname'     => 'enrol_mentorsubscription\external',
-        'methodname'    => 'add_mentee',
+        'classname'     => 'enrol_mentorsubscription\external\add_mentee',
+        'methodname'    => 'execute',
         'description'   => 'Register a new mentee under the authenticated mentor.',
         'type'          => 'write',
         'ajax'          => true,
@@ -58,8 +59,8 @@ $functions = [
 
     // Get the mentor's current subscription summary for the dashboard widget.
     'enrol_mentorsubscription_get_subscription_summary' => [
-        'classname'     => 'enrol_mentorsubscription\external',
-        'methodname'    => 'get_subscription_summary',
+        'classname'     => 'enrol_mentorsubscription\external\get_subscription_summary',
+        'methodname'    => 'execute',
         'description'   => 'Returns active subscription data for the mentor dashboard.',
         'type'          => 'read',
         'ajax'          => true,
@@ -69,8 +70,8 @@ $functions = [
 
     // Admin: save or update a per-mentor price/limit override.
     'enrol_mentorsubscription_save_override' => [
-        'classname'     => 'enrol_mentorsubscription\external',
-        'methodname'    => 'save_override',
+        'classname'     => 'enrol_mentorsubscription\external\save_override',
+        'methodname'    => 'execute',
         'description'   => 'Create or update a mentor-specific subscription override (admin only).',
         'type'          => 'write',
         'ajax'          => true,
