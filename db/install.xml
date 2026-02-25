@@ -148,7 +148,7 @@
     </TABLE>
 
     <!-- ================================================================== -->
-    <!-- TABLE: enrol_mentorsub_notifications                                -->
+    <!-- TABLE: enrol_mentorsub_notifications                               -->
     <!-- Deduplication log for outgoing notifications.                      -->
     <!-- ================================================================== -->
     <TABLE NAME="enrol_mentorsub_notifications" COMMENT="Notification deduplication log — prevents duplicate messages">

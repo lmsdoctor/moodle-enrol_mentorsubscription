@@ -38,8 +38,9 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/externallib.php');
 
-use external_function_parameters;
+use moodle_exception;
 use external_value;
+use external_function_parameters;
 use external_single_structure;
 
 /**
@@ -152,7 +153,7 @@ class external extends \external_api {
                 'message'  => get_string('mentee_added_success', 'enrol_mentorsubscription'),
                 'menteeid' => (int) $record->menteeid,
             ];
-        } catch (\moodle_exception $e) {
+        } catch (moodle_exception $e) {
             return [
                 'success'  => false,
                 'message'  => $e->getMessage(),

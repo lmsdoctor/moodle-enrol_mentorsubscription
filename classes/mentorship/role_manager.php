@@ -34,6 +34,8 @@
 
 namespace enrol_mentorsubscription\mentorship;
 
+use moodle_exception;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -45,48 +47,84 @@ class role_manager {
     const PARENT_ROLE_SHORTNAME = 'parent';
 
     /**
+     * Capabilities to assign to the parent role.
+     * All granted at CONTEXT_USER level.
+     */
+    private const PARENT_ROLE_CAPABILITIES = [
+        'moodle/user:viewdetails',
+        'moodle/user:viewalldetails',
+        'moodle/user:viewhiddendetails',
+        'gradereport/user:view',
+        'moodle/grade:viewall',
+    ];
+
+    /**
      * Ensures the "parent" role exists in Moodle with correct configuration.
      *
-     * Idempotent: if the role already exists, it is returned without changes.
-     * Restricts context level to CONTEXT_USER only.
-     * Assigns required capabilities: viewdetails, viewalldetails, grade views.
-     *
-     * Full implementation: M-1.1 to M-1.3
+     * Idempotent: if the role already exists it is returned without modification.
+     * On creation:
+     *   1. create_role() with shortname 'parent'                         (M-1.1)
+     *   2. set_role_contextlevels() — restricts to CONTEXT_USER only     (M-1.2)
+     *   3. assign_capability() for each required capability              (M-1.3)
      *
      * @return int Role ID.
      */
     public function ensure_parent_role_exists(): int {
         global $DB;
 
-        // TODO M-1.1: create_role() if not exists; set contextlevels; assign capabilities.
+        // --- M-1.1: Return existing role — idempotent. -------------------
         $role = $DB->get_record('role', ['shortname' => self::PARENT_ROLE_SHORTNAME]);
         if ($role) {
             return (int) $role->id;
         }
 
-        throw new \coding_exception('ensure_parent_role_exists() not yet implemented — scheduled for M-1.1.');
+        // Create the role.
+        $roleid = create_role(
+            get_string('parentrole', 'enrol_mentorsubscription'),  // full name
+            self::PARENT_ROLE_SHORTNAME,                            // shortname
+            get_string('parentrole_desc', 'enrol_mentorsubscription'), // description
+            'teacher'                                               // archetype
+        );
+
+        if (!$roleid) {
+            throw new moodle_exception('cannotcreateparentrole', 'enrol_mentorsubscription');
+        }
+
+        // --- M-1.2: Restrict to CONTEXT_USER only. -----------------------
+        set_role_contextlevels($roleid, [CONTEXT_USER]);
+
+        // --- M-1.3: Assign required capabilities. ------------------------
+        $systemcontext = \context_system::instance();
+        foreach (self::PARENT_ROLE_CAPABILITIES as $cap) {
+            assign_capability($cap, CAP_ALLOW, $roleid, $systemcontext->id, true);
+        }
+
+        return (int) $roleid;
     }
 
     /**
-     * Assigns the mentor as "parent" in the mentee's user context.
+     * Assigns the mentor as "parent" in the mentee's CONTEXT_USER.
      *
-     * Idempotent: role_assign() in Moodle does not duplicate existing assignments.
+     * Idempotent — role_assign() in Moodle silently ignores duplicate
+     * assignments, so calling this method twice is safe.
      *
      * Full implementation: M-1.4
      *
-     * @param int $mentorid Mentor user ID.
-     * @param int $menteeid Mentee user ID.
+     * @param int $mentorid Mentor user ID (the principal being assigned the role).
+     * @param int $menteeid Mentee user ID (whose context is used).
      * @return void
      */
     public function assign_mentor_as_parent(int $mentorid, int $menteeid): void {
-        // TODO M-1.4: role_assign($roleid, $mentorid, context_user::instance($menteeid)->id).
-        throw new \coding_exception('assign_mentor_as_parent() not yet implemented — scheduled for M-1.4.');
+        $roleid  = $this->ensure_parent_role_exists();
+        $context = \context_user::instance($menteeid);
+        role_assign($roleid, $mentorid, $context->id);
     }
 
     /**
-     * Removes the mentor's parent role assignment from the mentee's user context.
+     * Removes the mentor's parent role from the mentee's CONTEXT_USER.
      *
-     * Safe to call even if the assignment does not exist.
+     * Safe to call even when the assignment no longer exists —
+     * role_unassign() in Moodle is a no-op in that case.
      *
      * Full implementation: M-1.5
      *
@@ -95,7 +133,8 @@ class role_manager {
      * @return void
      */
     public function unassign_mentor_as_parent(int $mentorid, int $menteeid): void {
-        // TODO M-1.5: role_unassign($roleid, $mentorid, context_user::instance($menteeid)->id).
-        throw new \coding_exception('unassign_mentor_as_parent() not yet implemented — scheduled for M-1.5.');
+        $roleid  = $this->ensure_parent_role_exists();
+        $context = \context_user::instance($menteeid);
+        role_unassign($roleid, $mentorid, $context->id);
     }
 }

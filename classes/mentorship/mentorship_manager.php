@@ -39,43 +39,175 @@ class mentorship_manager {
     /**
      * Adds a new mentee to a mentor's list.
      *
-     * Validation chain (all must pass):
+     * Validation chain:
      *   1. Mentor has an active subscription.
      *   2. Active mentee count < billed_max_mentees.
-     *   3. Mentee user exists in Moodle.
-     *   4. UNIQUE(menteeid) not violated.
+     *   3. Mentee user exists and is not deleted.
+     *   4. UNIQUE(menteeid) — mentee has no other mentor.
      *
-     * On success: INSERT mentee record + role_assign() + enrol_user() in transaction.
-     * On success: dispatches mentee_enrolled event.
+     * On success: INSERT + role_assign() + enrol in a DB transaction,
+     * then dispatches the mentee_enrolled event.
      *
-     * Full implementation: M-3.1
+     * M-3.1
      *
      * @param int $mentorid  Mentor user ID.
      * @param int $menteeid  Mentee user ID.
      * @return \stdClass Newly created mentee record.
-     * @throws \moodle_exception On validation failure.
+     * @throws \moodle_exception On any validation failure.
      */
     public function add_mentee(int $mentorid, int $menteeid): \stdClass {
-        // TODO M-3.1: Full implementation.
-        throw new \coding_exception('add_mentee() not yet implemented — scheduled for M-3.1.');
+        global $DB;
+
+        // --- 1. Active subscription check. --------------------------------
+        $submanager   = new \enrol_mentorsubscription\subscription\subscription_manager();
+        $subscription = $submanager->get_active_subscription($mentorid);
+
+        if (!$subscription) {
+            throw new \moodle_exception('error_no_active_subscription', 'enrol_mentorsubscription');
+        }
+
+        // --- 2. Mentee limit. ---------------------------------------------
+        $active = $this->count_active_mentees($mentorid);
+        if ($active >= (int) $subscription->billed_max_mentees) {
+            throw new \moodle_exception('error_limit_reached', 'enrol_mentorsubscription');
+        }
+
+        // --- 3. Mentee user must exist. -----------------------------------
+        if (!$DB->record_exists_select('user', 'id = :id AND deleted = 0', ['id' => $menteeid])) {
+            throw new \moodle_exception('error_mentee_not_found', 'enrol_mentorsubscription');
+        }
+
+        // --- 4. System-wide uniqueness — one mentor per mentee. -----------
+        if ($DB->record_exists('enrol_mentorsub_mentees', ['menteeid' => $menteeid])) {
+            throw new \moodle_exception('error_mentee_already_assigned', 'enrol_mentorsubscription');
+        }
+
+        // --- Atomic insert inside a DB transaction. -----------------------
+        $now         = time();
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            $record = (object) [
+                'mentorid'       => $mentorid,
+                'menteeid'       => $menteeid,
+                'subscriptionid' => $subscription->id,
+                'is_active'      => 1,
+                'timecreated'    => $now,
+                'timemodified'   => $now,
+            ];
+
+            $record->id = $DB->insert_record('enrol_mentorsub_mentees', $record);
+
+            // Assign Parent Role in mentee's CONTEXT_USER.
+            $rolemgr = new role_manager();
+            $rolemgr->assign_mentor_as_parent($mentorid, $menteeid);
+
+            $transaction->allow_commit();
+
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
+
+        // --- Enrol in subscription courses (outside transaction). ---------
+        $sync = new enrolment_sync();
+        $sync->enrol_mentee($menteeid);
+
+        // --- Dispatch event. ----------------------------------------------
+        $event = \enrol_mentorsubscription\event\mentee_enrolled::create([
+            'context'       => \context_system::instance(),
+            'objectid'      => $record->id,
+            'relateduserid' => $menteeid,
+            'userid'        => $mentorid,
+        ]);
+        $event->trigger();
+
+        return $record;
     }
 
     /**
      * Toggles a mentee's active/inactive state.
      *
-     * Deactivation: always allowed — unenrolls from all plugin courses.
-     * Activation:   validates limit first — re-enrols from all plugin courses.
+     * - Deactivation (is_active → 0): always allowed; unenrols immediately.
+     * - Activation (is_active → 1): validates limit; re-enrols on success.
      *
-     * Full implementation: M-3.4
+     * M-3.4
      *
-     * @param int $mentorid  Mentor user ID.
+     * @param int $mentorid  Mentor user ID (ownership check).
      * @param int $menteeid  Mentee user ID.
      * @param int $isActive  1 = activate, 0 = deactivate.
-     * @return array {bool success, string reason, int limit, int active}
+     * @return array ['success' => bool, 'reason' => string, 'limit' => int, 'active' => int]
      */
     public function toggle_mentee_status(int $mentorid, int $menteeid, int $isActive): array {
-        // TODO M-3.4: Full implementation.
-        throw new \coding_exception('toggle_mentee_status() not yet implemented — scheduled for M-3.4.');
+        global $DB;
+
+        $mentee = $DB->get_record('enrol_mentorsub_mentees',
+                                  ['mentorid' => $mentorid, 'menteeid' => $menteeid]);
+
+        if (!$mentee) {
+            return ['success' => false, 'reason' => 'notfound', 'limit' => 0, 'active' => 0];
+        }
+
+        $sync   = new enrolment_sync();
+        $subman = new \enrol_mentorsubscription\subscription\subscription_manager();
+        $sub    = $subman->get_active_subscription($mentorid);
+        $limit  = $sub ? (int) $sub->billed_max_mentees : 0;
+
+        // --- Deactivation — always allowed. --------------------------------
+        if ($isActive === 0) {
+            $DB->set_field('enrol_mentorsub_mentees', 'is_active', 0,
+                           ['id' => $mentee->id]);
+            $DB->set_field('enrol_mentorsub_mentees', 'timemodified', time(),
+                           ['id' => $mentee->id]);
+            $sync->unenrol_mentee($menteeid);
+
+            $event = \enrol_mentorsubscription\event\mentee_status_changed::create([
+                'context'       => \context_system::instance(),
+                'objectid'      => $mentee->id,
+                'relateduserid' => $menteeid,
+                'userid'        => $mentorid,
+                'other'         => ['is_active' => 0],
+            ]);
+            $event->trigger();
+
+            return [
+                'success' => true,
+                'reason'  => 'deactivated',
+                'limit'   => $limit,
+                'active'  => $this->count_active_mentees($mentorid),
+            ];
+        }
+
+        // --- Activation — validate limit first. ---------------------------
+        $active = $this->count_active_mentees($mentorid);
+        if ($active >= $limit) {
+            return [
+                'success' => false,
+                'reason'  => 'limitreached',
+                'limit'   => $limit,
+                'active'  => $active,
+            ];
+        }
+
+        $DB->set_field('enrol_mentorsub_mentees', 'is_active', 1, ['id' => $mentee->id]);
+        $DB->set_field('enrol_mentorsub_mentees', 'timemodified', time(), ['id' => $mentee->id]);
+        $sync->enrol_mentee($menteeid);
+
+        $event = \enrol_mentorsubscription\event\mentee_status_changed::create([
+            'context'       => \context_system::instance(),
+            'objectid'      => $mentee->id,
+            'relateduserid' => $menteeid,
+            'userid'        => $mentorid,
+            'other'         => ['is_active' => 1],
+        ]);
+        $event->trigger();
+
+        return [
+            'success' => true,
+            'reason'  => 'activated',
+            'limit'   => $limit,
+            'active'  => $this->count_active_mentees($mentorid),
+        ];
     }
 
     /**

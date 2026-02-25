@@ -129,34 +129,116 @@ class subscription_manager {
      * 'superseded' and creates a new 'active' record.
      *
      * Runs inside a DB transaction to ensure atomicity.
+     * Called by stripe_handler on invoice.paid events.
      *
-     * Full implementation: M-2.6
+     * M-2.6
      *
-     * @param int    $previousId   ID of the current active subscription.
-     * @param array  $newData      New cycle data from Stripe invoice.paid event.
-     * @return int   New subscription record ID.
+     * @param int   $previousId  ID of the current active subscription.
+     * @param array $newData     New cycle snapshot from Stripe invoice.paid. Keys:
+     *                           userid, subtypeid, billed_price, billed_max_mentees,
+     *                           billing_cycle, stripe_subscription_id, stripe_customer_id,
+     *                           stripe_price_id_used, period_start, period_end,
+     *                           [overrideid], [stripe_invoice_id], [stripe_payment_intent_id]
+     * @return int  New subscription record ID.
      */
     public function process_renewal(int $previousId, array $newData): int {
         global $DB;
 
-        // TODO M-2.6: Implement transactional renewal.
-        // 1. $DB->start_delegated_transaction()
-        // 2. UPDATE previous record: status = 'superseded'
-        // 3. INSERT new record: status = 'active' with new snapshot
-        // 4. Commit transaction.
-        throw new \coding_exception('process_renewal() not yet implemented — scheduled for M-2.6.');
+        $now         = time();
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            // 1. Mark previous cycle as superseded.
+            $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'superseded',
+                           ['id' => $previousId]);
+            $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', $now,
+                           ['id' => $previousId]);
+
+            // 2. Create the new active cycle — snapshot price/limit at renewal time.
+            $record = (object) [
+                'userid'                   => $newData['userid'],
+                'subtypeid'                => $newData['subtypeid'],
+                'overrideid'               => $newData['overrideid'] ?? null,
+                'billed_price'             => $newData['billed_price'],
+                'billed_max_mentees'       => $newData['billed_max_mentees'],
+                'billing_cycle'            => $newData['billing_cycle'],
+                'status'                   => 'active',
+                'stripe_subscription_id'   => $newData['stripe_subscription_id'],
+                'stripe_customer_id'       => $newData['stripe_customer_id'],
+                'stripe_payment_intent_id' => $newData['stripe_payment_intent_id'] ?? null,
+                'stripe_invoice_id'        => $newData['stripe_invoice_id'] ?? null,
+                'stripe_price_id_used'     => $newData['stripe_price_id_used'],
+                'period_start'             => $newData['period_start'],
+                'period_end'               => $newData['period_end'],
+                'cancelled_at'             => null,
+                'cancel_at_period_end'     => 0,
+                'timecreated'              => $now,
+                'timemodified'             => $now,
+            ];
+
+            $newId = $DB->insert_record('enrol_mentorsub_subscriptions', $record);
+            $transaction->allow_commit();
+
+            return $newId;
+
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
     }
 
     /**
-     * Marks a subscription as expired and triggers bulk unenrolment.
+     * Marks a subscription as expired and bulk-unenrols all mentees.
      *
-     * Full implementation: M-2.8
+     * Called by stripe_handler on customer.subscription.deleted events,
+     * and by sync_stripe_subscriptions task.
+     *
+     * M-2.8 + M-3.7
      *
      * @param int $subscriptionId Subscription record ID.
      * @return void
      */
     public function expire_subscription(int $subscriptionId): void {
-        // TODO M-2.8 + M-3.7: Set status=expired, dispatch bulk unenrolment via Ad-hoc Task.
-        throw new \coding_exception('expire_subscription() not yet implemented — scheduled for M-2.8.');
+        global $DB;
+
+        $subscription = $DB->get_record('enrol_mentorsub_subscriptions',
+                                        ['id' => $subscriptionId], '*', MUST_EXIST);
+
+        $now         = time();
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            // 1. Mark subscription expired.
+            $DB->set_field('enrol_mentorsub_subscriptions', 'status', 'expired',
+                           ['id' => $subscriptionId]);
+            $DB->set_field('enrol_mentorsub_subscriptions', 'timemodified', $now,
+                           ['id' => $subscriptionId]);
+
+            // 2. Deactivate all mentees for this mentor.
+            $mentees = $DB->get_records('enrol_mentorsub_mentees',
+                                        ['mentorid' => $subscription->userid,
+                                         'is_active' => 1]);
+
+            foreach ($mentees as $mentee) {
+                $DB->set_field('enrol_mentorsub_mentees', 'is_active', 0,
+                               ['id' => $mentee->id]);
+                $DB->set_field('enrol_mentorsub_mentees', 'timemodified', $now,
+                               ['id' => $mentee->id]);
+            }
+
+            $transaction->allow_commit();
+
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+            throw $e;
+        }
+
+        // 3. Unenrol mentees OUTSIDE the transaction (enrol API has its own transactions).
+        if (!empty($mentees)) {
+            $sync = new \enrol_mentorsubscription\mentorship\enrolment_sync();
+            foreach ($mentees as $mentee) {
+                $sync->unenrol_mentee((int) $mentee->menteeid);
+            }
+        }
     }
 }
