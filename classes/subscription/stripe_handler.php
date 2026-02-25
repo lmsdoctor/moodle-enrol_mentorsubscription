@@ -260,6 +260,16 @@ class stripe_handler {
             return;
         }
 
+        // Idempotency: if this invoice ID is already stored as a subscription
+        // record, the renewal has already been processed — skip silently.
+        // Stripe may deliver the same invoice.paid event more than once on retries.
+        if (!empty($invoice->id) &&
+            $DB->record_exists('enrol_mentorsub_subscriptions', ['stripe_invoice_id' => $invoice->id])) {
+            debugging("enrol_mentorsubscription: invoice {$invoice->id} already processed, skipping.",
+                      DEBUG_DEVELOPER);
+            return;
+        }
+
         $existing = $DB->get_record('enrol_mentorsub_subscriptions',
                                     ['stripe_subscription_id' => $invoice->subscription,
                                      'status' => 'active']);
