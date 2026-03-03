@@ -142,7 +142,7 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
      * @param stdClass $instance Enrolment instance record.
      * @return bool
      */
-    public function can_hide_show_instance(stdClass $instance): bool {
+    public function can_hide_show_instance($instance): bool {
         $context = context_course::instance($instance->courseid);
         return has_capability('enrol/mentorsubscription:config', $context);
     }
