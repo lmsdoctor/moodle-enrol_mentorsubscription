@@ -46,29 +46,22 @@ class create_mentee_form extends \moodleform {
         $mform = $this->_form;
 
         // ---------- Personal data ----------------------------------------
-        $mform->addElement('text', 'firstname',
-            get_string('firstname'), ['class' => 'form-control']);
+        $mform->addElement('text', 'firstname', get_string('firstname'));
         $mform->setType('firstname', PARAM_NOTAGS);
-        $mform->addRule('firstname',
-            get_string('missingfirstname'), 'required', null, 'client');
+        $mform->addRule('firstname', get_string('missingfirstname'), 'required', null, 'client');
 
-        $mform->addElement('text', 'lastname',
-            get_string('lastname'), ['class' => 'form-control']);
+        $mform->addElement('text', 'lastname', get_string('lastname'));
         $mform->setType('lastname', PARAM_NOTAGS);
-        $mform->addRule('lastname',
-            get_string('missinglastname'), 'required', null, 'client');
+        $mform->addRule('lastname', get_string('missinglastname'), 'required', null, 'client');
 
-        $mform->addElement('text', 'email',
-            get_string('email'), ['class' => 'form-control']);
+        $mform->addElement('text', 'email', get_string('email'));
         $mform->setType('email', PARAM_RAW_TRIMMED);
-        $mform->addRule('email',
-            get_string('missingemail'), 'required', null, 'client');
-        $mform->addRule('email',
-            get_string('invalidemail'), 'email', null, 'client');
+        $mform->addRule('email', get_string('missingemail'), 'required', null, 'client');
+        $mform->addRule('email', get_string('invalidemail'), 'email', null, 'client');
 
         // ---------- Password note ----------------------------------------
-        $mform->addElement('static', 'password_note', '',
-            '<div class="alert alert-info py-2 small mb-0">' .
+        $mform->addElement('html',
+            '<div class="alert alert-info py-2 small my-2">' .
             get_string('mentee_create_password_note', 'enrol_mentorsubscription') .
             '</div>');
 
