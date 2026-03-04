@@ -135,7 +135,7 @@ The plugin verifies every incoming webhook using `\Stripe\Webhook::constructEven
 
 ## 5. Admin Panel Usage
 
-Navigate to **Site Administration → Plugins → Enrolments → Mentor Subscription → Admin Panel** or visit `/enrol/mentorsubscription/admin.php`.
+Navigate to **Site Administration → Plugins → Enrolments → Mentor Subscription → Admin Panel** or visit `/enrol/mentorsubscription/admin`.
 
 ### Subscription Types
 
