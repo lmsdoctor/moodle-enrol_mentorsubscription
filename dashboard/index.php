@@ -20,14 +20,14 @@
  * Renders the authenticated mentor's subscription summary and mentee list.
  * Loads the AMD module that powers the toggle-switch and "Add mentee" modal.
  *
- * URL: /enrol/mentorsubscription/dashboard.php
+ * URL: /enrol/mentorsubscription/dashboard
  *
  * @package    enrol_mentorsubscription
  * @copyright  2026 LMS Doctor <info@lmsdoctor.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/../../../config.php');
 
 use enrol_mentorsubscription\output\mentor_dashboard as dashboard_renderable;
 use enrol_mentorsubscription\subscription\subscription_manager;
@@ -41,11 +41,12 @@ require_capability('enrol/mentorsubscription:viewdashboard', $context);
 // -------------------------------------------------------------------------
 // Page setup
 // -------------------------------------------------------------------------
-$PAGE->set_url(new moodle_url('/enrol/mentorsubscription/dashboard.php'));
+$PAGE->set_url(new moodle_url('/enrol/mentorsubscription/dashboard'));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('dashboard_title', 'enrol_mentorsubscription'));
 $PAGE->set_heading(get_string('dashboard_title', 'enrol_mentorsubscription'));
+$PAGE->navbar->add(get_string('dashboard_title', 'enrol_mentorsubscription'));
 
 // AMD module drives the toggle switch and "Add mentee" modal.
 $PAGE->requires->js_call_amd('enrol_mentorsubscription/mentor_dashboard', 'init');
