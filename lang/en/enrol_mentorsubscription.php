@@ -118,7 +118,10 @@ $string['dashboard_expires']         = 'Expires on';
 $string['dashboard_price']           = 'Price';
 $string['dashboard_active_mentees']  = 'Active mentees';
 $string['dashboard_limit']           = 'Limit';
-$string['dashboard_add_mentee']      = 'Add mentee';
+$string['dashboard_add_mentee']                = 'Add mentee';
+$string['dashboard_mentee_search_placeholder'] = 'Search by name or email...';
+$string['dashboard_mentee_noresults']          = 'No users found.';
+$string['dashboard_mentee_select_required']    = 'Please search and select a user first.';
 $string['dashboard_upgrade']         = 'Upgrade plan';
 $string['dashboard_limit_reached']   = 'You have reached the mentee limit for your current plan.';
 

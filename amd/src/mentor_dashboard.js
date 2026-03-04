@@ -161,8 +161,11 @@ const updateCounter = (activeCount, maxMentees) => {
 };
 
 // ---------------------------------------------------------------------------
-// Add mentee modal
+// Add mentee modal — user-search autocomplete
 // ---------------------------------------------------------------------------
+
+/** Debounce timer for the search input. */
+let searchTimeout = null;
 
 const bindAddMenteeButton = () => {
     dashboardRoot.addEventListener('click', (e) => {
@@ -177,53 +180,148 @@ const bindAddMenteeButton = () => {
 
 const openAddMenteeModal = () => {
     getStrings([
-        {key: 'dashboard_add_mentee', component: 'enrol_mentorsubscription'},
-        {key: 'save',                 component: 'core'},
-        {key: 'cancel',               component: 'core'},
-    ]).then(([title]) => {
+        {key: 'dashboard_add_mentee',               component: 'enrol_mentorsubscription'},
+        {key: 'dashboard_mentee_search_placeholder', component: 'enrol_mentorsubscription'},
+        {key: 'dashboard_mentee_noresults',          component: 'enrol_mentorsubscription'},
+        {key: 'dashboard_mentee_select_required',    component: 'enrol_mentorsubscription'},
+    ]).then(([title, placeholder, noResults, selectRequired]) => {
         return ModalFactory.create({
             type:  ModalFactory.types.SAVE_CANCEL,
             title,
-            body:  buildAddMenteeForm(),
+            body:  buildAddMenteeForm(placeholder),
             large: false,
+        }).then((modal) => {
+            modal.getRoot().on(ModalEvents.save, () => handleAddMenteeSubmit(modal, selectRequired));
+            modal.show();
+            setupMenteeSearch(modal, noResults);
+            return modal;
         });
-    }).then((modal) => {
-        modal.getRoot().on(ModalEvents.save, () => handleAddMenteeSubmit(modal));
-        modal.show();
-        return modal;
     }).catch(Notification.exception);
 };
 
 /**
- * Build a simple inline form HTML for the modal body.
+ * Build the modal body HTML containing the mentee search form.
  *
+ * @param {string} placeholder  Localised placeholder for the search input.
  * @returns {string} HTML string.
  */
-const buildAddMenteeForm = () => {
+const buildAddMenteeForm = (placeholder) => {
     return `
-        <div class="form-group mb-3">
-            <label for="mentorsub-new-menteeid" class="form-label">User ID</label>
-            <input type="number" min="1"
-                   id="mentorsub-new-menteeid"
+        <div class="form-group mb-3" style="position:relative;">
+            <input type="text"
+                   id="mentorsub-mentee-search"
                    class="form-control"
-                   placeholder="e.g. 42"
-                   required />
-            <div id="mentorsub-add-error" class="invalid-feedback"></div>
+                   placeholder="${placeholder}"
+                   autocomplete="off" />
+            <input type="hidden" id="mentorsub-new-menteeid" />
+            <ul id="mentorsub-search-results"
+                class="list-group mt-1"
+                style="position:absolute;width:100%;z-index:9999;max-height:220px;overflow-y:auto;">
+            </ul>
+            <div id="mentorsub-add-error" class="text-danger small mt-1 d-none"></div>
         </div>`;
 };
 
 /**
- * Submit the "add mentee" AJAX call from the modal.
+ * Wire up the live-search behaviour inside the add-mentee modal.
  *
- * @param {Object} modal  Core modal instance.
+ * @param {Object} modal      Core modal instance.
+ * @param {string} noResults  Localised "no users found" string.
  */
-const handleAddMenteeSubmit = (modal) => {
-    const input   = modal.getRoot()[0].querySelector('#mentorsub-new-menteeid');
-    const menteeid = parseInt(input ? input.value : '0', 10);
+const setupMenteeSearch = (modal, noResults) => {
+    const root        = modal.getRoot()[0];
+    const searchInput = root.querySelector('#mentorsub-mentee-search');
+    const idInput     = root.querySelector('#mentorsub-new-menteeid');
+    const resultsList = root.querySelector('#mentorsub-search-results');
+
+    if (!searchInput) {
+        return;
+    }
+
+    searchInput.addEventListener('input', () => {
+        idInput.value = ''; // Reset selection when user edits the query.
+        const q = searchInput.value.trim();
+        clearTimeout(searchTimeout);
+
+        if (q.length < 2) {
+            resultsList.innerHTML = '';
+            return;
+        }
+
+        searchTimeout = setTimeout(
+            () => runUserSearch(q, resultsList, searchInput, idInput, noResults),
+            300
+        );
+    });
+};
+
+/**
+ * Execute the AJAX user search and render the dropdown results.
+ *
+ * @param {string}      q             Search query (≥ 2 chars).
+ * @param {HTMLElement} resultsList   <ul> element to populate.
+ * @param {HTMLElement} searchInput   Text input for the query.
+ * @param {HTMLElement} idInput       Hidden input storing the selected user ID.
+ * @param {string}      noResults     Localised "no users found" label.
+ */
+const runUserSearch = (q, resultsList, searchInput, idInput, noResults) => {
+    Ajax.call([{
+        methodname: 'enrol_mentorsubscription_search_users',
+        args: {query: q},
+    }])[0]
+    .done((users) => {
+        resultsList.innerHTML = '';
+
+        if (!users.length) {
+            const empty = document.createElement('li');
+            empty.className   = 'list-group-item text-muted py-2 small';
+            empty.textContent = noResults;
+            resultsList.appendChild(empty);
+            return;
+        }
+
+        users.forEach((user) => {
+            const item = document.createElement('li');
+            item.className    = 'list-group-item list-group-item-action py-2 small';
+            item.style.cursor = 'pointer';
+            item.textContent  = user.label;
+
+            // mousedown fires before the input's blur event so the dropdown
+            // stays open long enough for the selection to register.
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                idInput.value     = user.value;
+                searchInput.value = user.label;
+                searchInput.classList.remove('is-invalid');
+                resultsList.innerHTML = '';
+            });
+
+            resultsList.appendChild(item);
+        });
+    })
+    .fail(Notification.exception);
+};
+
+/**
+ * Submit the selected mentee via the add_mentee AJAX endpoint.
+ *
+ * @param {Object} modal           Core modal instance.
+ * @param {string} selectRequired  Localised "please select a user" error text.
+ */
+const handleAddMenteeSubmit = (modal, selectRequired) => {
+    const root        = modal.getRoot()[0];
+    const idInput     = root.querySelector('#mentorsub-new-menteeid');
+    const searchInput = root.querySelector('#mentorsub-mentee-search');
+    const errDiv      = root.querySelector('#mentorsub-add-error');
+    const menteeid    = parseInt(idInput ? idInput.value : '0', 10);
 
     if (!menteeid || menteeid <= 0) {
-        if (input) {
-            input.classList.add('is-invalid');
+        if (searchInput) {
+            searchInput.classList.add('is-invalid');
+        }
+        if (errDiv) {
+            errDiv.textContent = selectRequired;
+            errDiv.classList.remove('d-none');
         }
         return;
     }
@@ -235,15 +333,11 @@ const handleAddMenteeSubmit = (modal) => {
     .done((result) => {
         if (result.success) {
             modal.hide();
-            // Reload page to show new mentee card.
             window.location.reload();
         } else {
-            const errDiv = modal.getRoot()[0].querySelector('#mentorsub-add-error');
             if (errDiv) {
                 errDiv.textContent = result.message;
-            }
-            if (input) {
-                input.classList.add('is-invalid');
+                errDiv.classList.remove('d-none');
             }
         }
     })

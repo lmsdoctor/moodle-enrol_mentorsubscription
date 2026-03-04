@@ -101,6 +101,16 @@ $functions = [
         'loginrequired' => true,
     ],
 
+    // Search users by name or email — used by the "Add mentee" autocomplete in the dashboard modal.
+    'enrol_mentorsubscription_search_users' => [
+        'classname'     => 'enrol_mentorsubscription\external\search_users',
+        'methodname'    => 'execute',
+        'description'   => 'Search users by name or email for the mentee autocomplete (read-only).',
+        'type'          => 'read',
+        'ajax'          => true,
+        'loginrequired' => true,
+    ],
+
 ];
 
 // -------------------------------------------------------------------------
@@ -111,6 +121,7 @@ $services = [
         'functions'       => [
             'enrol_mentorsubscription_toggle_mentee_status',
             'enrol_mentorsubscription_add_mentee',
+            'enrol_mentorsubscription_search_users',
             'enrol_mentorsubscription_get_subscription_summary',
             'enrol_mentorsubscription_save_override',
             'enrol_mentorsubscription_cancel_subscription',
