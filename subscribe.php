@@ -183,11 +183,13 @@ if ((bool) $subtypeid) {
     $newOrderId = $DB->insert_record('enrol_mentorsub_orders', $newOrder);
 
     // --- Build return URLs -------------------------------------------------
-    // Stripe replaces {CHECKOUT_SESSION_ID} with the real session ID at runtime.
-    $successUrl = (new moodle_url(
-        '/enrol/mentorsubscription/subscribe.php',
-        ['checkout' => 'success', 'orderid' => $newOrderId]
-    ))->out(false) . '&session_id={CHECKOUT_SESSION_ID}';
+    // IMPORTANT: success_url must be built from $CFG->wwwroot, NOT moodle_url.
+    // moodle_url->out() percent-encodes { and } into %7B/%7D, which prevents
+    // Stripe from substituting the {CHECKOUT_SESSION_ID} template variable.
+    $successUrl = rtrim($CFG->wwwroot, '/') .
+        '/enrol/mentorsubscription/subscribe.php' .
+        '?checkout=success&orderid=' . $newOrderId .
+        '&session_id={CHECKOUT_SESSION_ID}';
 
     $cancelUrlParams = ['checkout' => 'cancel', 'orderid' => $newOrderId];
     if (!empty($returnurl)) {
