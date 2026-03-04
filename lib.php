@@ -311,4 +311,57 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
             $this->unenrol_user($instance, $mentorid);
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Course page integration
+    // -------------------------------------------------------------------------
+
+    /**
+     * Hook called by Moodle when an unenrolled user views a course that has
+     * this enrolment method enabled.
+     *
+     * Returns the HTML of the subscription plan selection panel so users can
+     * choose a plan and be redirected to Stripe Checkout without leaving the
+     * course context.
+     *
+     * Behaviour:
+     *  - Guest users → prompt to log in instead of showing plans.
+     *  - Authenticated users without the subscribe capability → silent return
+     *    (Moodle will handle the "no enrolment method available" message).
+     *  - Authenticated users with the capability → render the subscribe_plans_panel.
+     *
+     * @param stdClass $instance Enrolment instance record from {enrol}.
+     * @return string HTML fragment to inject into the course enrolment page, or
+     *                empty string when nothing should be displayed.
+     */
+    public function enrol_page_hook(stdClass $instance): string {
+        global $OUTPUT, $PAGE, $USER;
+
+        // Disabled instance — show nothing.
+        if ((int) $instance->status !== ENROL_INSTANCE_ENABLED) {
+            return '';
+        }
+
+        $sitecontext = \context_system::instance();
+
+        // Guest / not-logged-in users: invite them to log in.
+        if (!isloggedin() || isguestuser()) {
+            $loginurl = (new \moodle_url('/login/index.php'))->out(false);
+            return $OUTPUT->notification(
+                get_string('enrolpage_login_required', 'enrol_mentorsubscription', $loginurl),
+                'info'
+            );
+        }
+
+        // Authenticated users who cannot subscribe — nothing to show.
+        if (!has_capability('enrol/mentorsubscription:managesubscription', $sitecontext)) {
+            return '';
+        }
+
+        // Render the plan selection panel.
+        $panel    = new \enrol_mentorsubscription\output\subscribe_plans_panel($instance);
+        $renderer = $PAGE->get_renderer('enrol_mentorsubscription');
+
+        return $renderer->render($panel);
+    }
 }

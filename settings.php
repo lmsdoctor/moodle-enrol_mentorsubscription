@@ -37,7 +37,26 @@ if ($ADMIN->fulltree) {
         get_string('settings_stripeheading_desc', 'enrol_mentorsubscription')
     ));
 
-    // Stripe Secret Key.
+    // Mode toggle: live vs sandbox.
+    $settings->add(new admin_setting_configselect(
+        'enrol_mentorsubscription/stripe_mode',
+        get_string('settings_stripe_mode', 'enrol_mentorsubscription'),
+        get_string('settings_stripe_mode_desc', 'enrol_mentorsubscription'),
+        'live',
+        [
+            'live'    => get_string('settings_stripe_mode_live', 'enrol_mentorsubscription'),
+            'sandbox' => get_string('settings_stripe_mode_sandbox', 'enrol_mentorsubscription'),
+        ]
+    ));
+
+    // ── Live keys ──────────────────────────────────────────────────────────
+    $settings->add(new admin_setting_heading(
+        'enrol_mentorsubscription/stripeliveheading',
+        get_string('settings_stripe_live_heading', 'enrol_mentorsubscription'),
+        ''
+    ));
+
+    // Stripe Live Secret Key.
     $settings->add(new admin_setting_configpasswordunmask(
         'enrol_mentorsubscription/stripe_secret_key',
         get_string('settings_stripe_secret_key', 'enrol_mentorsubscription'),
@@ -45,7 +64,7 @@ if ($ADMIN->fulltree) {
         ''
     ));
 
-    // Stripe Webhook Secret (for HMAC signature verification).
+    // Stripe Live Webhook Secret.
     $settings->add(new admin_setting_configpasswordunmask(
         'enrol_mentorsubscription/stripe_webhook_secret',
         get_string('settings_stripe_webhook_secret', 'enrol_mentorsubscription'),
@@ -53,11 +72,42 @@ if ($ADMIN->fulltree) {
         ''
     ));
 
-    // Stripe Publishable Key (used in frontend JS for Checkout redirect).
+    // Stripe Live Publishable Key.
     $settings->add(new admin_setting_configtext(
         'enrol_mentorsubscription/stripe_publishable_key',
         get_string('settings_stripe_publishable_key', 'enrol_mentorsubscription'),
         get_string('settings_stripe_publishable_key_desc', 'enrol_mentorsubscription'),
+        ''
+    ));
+
+    // ── Sandbox keys ───────────────────────────────────────────────────────
+    $settings->add(new admin_setting_heading(
+        'enrol_mentorsubscription/stripesandboxheading',
+        get_string('settings_stripe_sandbox_heading', 'enrol_mentorsubscription'),
+        get_string('settings_stripe_sandbox_heading_desc', 'enrol_mentorsubscription')
+    ));
+
+    // Stripe Sandbox Secret Key.
+    $settings->add(new admin_setting_configpasswordunmask(
+        'enrol_mentorsubscription/stripe_sandbox_secret_key',
+        get_string('settings_stripe_sandbox_secret_key', 'enrol_mentorsubscription'),
+        get_string('settings_stripe_sandbox_secret_key_desc', 'enrol_mentorsubscription'),
+        ''
+    ));
+
+    // Stripe Sandbox Webhook Secret.
+    $settings->add(new admin_setting_configpasswordunmask(
+        'enrol_mentorsubscription/stripe_sandbox_webhook_secret',
+        get_string('settings_stripe_sandbox_webhook_secret', 'enrol_mentorsubscription'),
+        get_string('settings_stripe_sandbox_webhook_secret_desc', 'enrol_mentorsubscription'),
+        ''
+    ));
+
+    // Stripe Sandbox Publishable Key.
+    $settings->add(new admin_setting_configtext(
+        'enrol_mentorsubscription/stripe_sandbox_publishable_key',
+        get_string('settings_stripe_sandbox_publishable_key', 'enrol_mentorsubscription'),
+        get_string('settings_stripe_sandbox_publishable_key_desc', 'enrol_mentorsubscription'),
         ''
     ));
 

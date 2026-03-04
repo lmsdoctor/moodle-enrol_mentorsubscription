@@ -38,6 +38,13 @@ $string['pluginname_desc']          = 'Manages mentor-mentee subscriptions with 
 // -------------------------------------------------------------------------
 $string['settings_stripeheading']              = 'Stripe Configuration';
 $string['settings_stripeheading_desc']         = 'API keys and webhook secret for Stripe integration.';
+$string['settings_stripe_mode']                = 'Stripe mode';
+$string['settings_stripe_mode_desc']           = 'Select <strong>Sandbox</strong> while testing (uses your sandbox keys). Switch to <strong>Live</strong> for production.';
+$string['settings_stripe_mode_live']           = 'Live';
+$string['settings_stripe_mode_sandbox']        = 'Sandbox (test)';
+$string['settings_stripe_live_heading']        = 'Live keys';
+$string['settings_stripe_sandbox_heading']     = 'Sandbox keys';
+$string['settings_stripe_sandbox_heading_desc'] = 'Create a Stripe Sandbox at <a href="https://dashboard.stripe.com/sandboxes" target="_blank">dashboard.stripe.com/sandboxes</a> and paste its keys here.';
 $string['settings_subscriptionheading']        = 'Subscription Defaults';
 $string['settings_subscriptionheading_desc']   = 'Default plan limits and notification thresholds.';
 $string['settings_enrolheading']               = 'Enrolment Configuration';
@@ -48,12 +55,20 @@ $string['settings_notificationheading_desc']   = 'Control when and how notificat
 // -------------------------------------------------------------------------
 // Settings fields
 // -------------------------------------------------------------------------
-$string['settings_stripe_secret_key']          = 'Stripe Secret Key';
-$string['settings_stripe_secret_key_desc']     = 'Your Stripe secret key (sk_live_... or sk_test_...). Never share this value.';
-$string['settings_stripe_webhook_secret']      = 'Stripe Webhook Secret';
-$string['settings_stripe_webhook_secret_desc'] = 'Signing secret for verifying Stripe webhook payloads (whsec_...).';
-$string['settings_stripe_publishable_key']     = 'Stripe Publishable Key';
-$string['settings_stripe_publishable_key_desc'] = 'Public key used in the frontend to initiate Stripe Checkout (pk_live_... or pk_test_...).';
+$string['settings_stripe_secret_key']          = 'Live Secret Key';
+$string['settings_stripe_secret_key_desc']     = 'Your Stripe live secret key (sk_live_...). Never share this value.';
+$string['settings_stripe_webhook_secret']      = 'Live Webhook Secret';
+$string['settings_stripe_webhook_secret_desc'] = 'Signing secret for verifying live Stripe webhook payloads (whsec_...).';
+$string['settings_stripe_publishable_key']     = 'Live Publishable Key';
+$string['settings_stripe_publishable_key_desc'] = 'Live public key used in the frontend to initiate Stripe Checkout (pk_live_...).';
+$string['settings_stripe_sandbox_secret_key']          = 'Sandbox Secret Key';
+$string['settings_stripe_sandbox_secret_key_desc']     = 'Your Stripe sandbox secret key. Find it inside the sandbox on the Stripe dashboard.';
+$string['settings_stripe_sandbox_webhook_secret']      = 'Sandbox Webhook Secret';
+$string['settings_stripe_sandbox_webhook_secret_desc'] = 'Signing secret for verifying sandbox webhook payloads.';
+$string['settings_stripe_sandbox_publishable_key']     = 'Sandbox Publishable Key';
+$string['settings_stripe_sandbox_publishable_key_desc'] = 'Sandbox public key used in the frontend (pk_test_... from the sandbox).';
+$string['stripe_testmode_badge']  = 'Test Mode';
+$string['stripe_testmode_notice'] = 'Stripe is in <strong>Sandbox / Test Mode</strong>. No real payments will be processed.';
 $string['settings_default_max_mentees']        = 'Default Mentee Limit';
 $string['settings_default_max_mentees_desc']   = 'Maximum number of mentees per subscription when no override is in place.';
 $string['settings_expiry_warning_days']        = 'Expiry Warning Days';
@@ -155,6 +170,7 @@ $string['task_sync_stripe_subscriptions']    = 'Sync Stripe subscription statuse
 // Privacy
 // -------------------------------------------------------------------------
 $string['privacy:metadata:enrol_mentorsub_subscriptions']         = 'Subscription billing records for each mentor.';
+$string['privacy:metadata:enrol_mentorsub_orders']                = 'Checkout order records tracking each Stripe Checkout Session initiated by a mentor.';
 $string['privacy:metadata:enrol_mentorsub_mentees']               = 'Mentor-mentee relationship records.';
 $string['privacy:metadata:enrol_mentorsub_sub_overrides']         = 'Custom pricing overrides assigned to specific mentors.';
 $string['privacy:metadata:enrol_mentorsub_notifications']         = 'Log of notifications sent to mentors.';
@@ -217,7 +233,17 @@ $string['subscribe_no_plans']          = 'No subscription plans are currently av
 $string['subscribe_payment_success']   = 'Payment successful! Your subscription is now active.';
 $string['subscribe_payment_cancelled'] = 'Payment cancelled. You have not been charged.';
 $string['subscribe_invalid_plan']      = 'The selected subscription plan is not available.';
-$string['subscribe_mentee_limit']      = 'Up to {$a->limit} mentees';
+$string['subscribe_mentee_limit']      = 'Up to {$a} mentees';
+$string['subscribe_popular']           = 'Most Popular';
+$string['subscribe_already_subscribed'] = 'You already have an active subscription. Manage it from your dashboard.';
+
+// -------------------------------------------------------------------------
+// Order statuses
+// -------------------------------------------------------------------------
+$string['order_status_pending']    = 'Pending';
+$string['order_status_processing'] = 'Processing';
+$string['order_status_completed']  = 'Completed';
+$string['order_status_cancelled']  = 'Cancelled';
 
 // -------------------------------------------------------------------------
 // Admin panel actions
@@ -300,6 +326,11 @@ $string['settings_mentorroleid_desc']            = 'Role assigned to mentors whe
 $string['dashboard_no_subscription']             = 'No active subscription found. Please subscribe to access the mentor panel.';
 $string['dashboard_warning_paused']              = 'Your subscription is currently paused. Resume your subscription to continue using all mentor features.';
 $string['dashboard_warning_cancel_period_end']   = 'Your subscription is set to cancel on';
+
+// -------------------------------------------------------------------------
+// Course enrolment page hook (shown when unenrolled user views the course)
+// -------------------------------------------------------------------------
+$string['enrolpage_login_required'] = 'Please <a href="{$a}">log in</a> to view available subscription plans.';
 
 // -------------------------------------------------------------------------
 // Course instance form (Standard Editing UI)

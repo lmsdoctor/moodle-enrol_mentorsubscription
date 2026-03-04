@@ -81,6 +81,13 @@ class sub_type_form extends \moodleform {
         $mform->setType('default_max_mentees', PARAM_INT);
         $mform->addRule('default_max_mentees', null, 'required', null, 'client');
         $mform->setDefault('default_max_mentees', 10);
+        
+        // ── Stripe Product ID ─────────────────────────────────────────────────
+        $mform->addElement('text', 'stripe_product_id',
+            get_string('subtype_stripe_product_id', 'enrol_mentorsubscription'), ['size' => 60]);
+        $mform->setType('stripe_product_id', PARAM_TEXT);
+        $mform->addRule('stripe_product_id', null, 'required', null, 'client');
+        $mform->addHelpButton('stripe_product_id', 'subtype_stripe_product_id', 'enrol_mentorsubscription');
 
         // ── Stripe Price ID ──────────────────────────────────────────────────
         $mform->addElement('text', 'stripe_price_id',
@@ -88,13 +95,6 @@ class sub_type_form extends \moodleform {
         $mform->setType('stripe_price_id', PARAM_TEXT);
         $mform->addRule('stripe_price_id', null, 'required', null, 'client');
         $mform->addHelpButton('stripe_price_id', 'subtype_stripe_price_id', 'enrol_mentorsubscription');
-
-        // ── Stripe Product ID ─────────────────────────────────────────────────
-        $mform->addElement('text', 'stripe_product_id',
-            get_string('subtype_stripe_product_id', 'enrol_mentorsubscription'), ['size' => 60]);
-        $mform->setType('stripe_product_id', PARAM_TEXT);
-        $mform->addRule('stripe_product_id', null, 'required', null, 'client');
-        $mform->addHelpButton('stripe_product_id', 'subtype_stripe_product_id', 'enrol_mentorsubscription');
 
         // ── Description ──────────────────────────────────────────────────────
         $mform->addElement('textarea', 'description',

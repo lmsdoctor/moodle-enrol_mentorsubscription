@@ -58,7 +58,10 @@ if (empty($payload)) {
 // ---------------------------------------------------------------------------
 // 2. Verify HMAC-SHA256 signature — reject anything that does not match.
 // ---------------------------------------------------------------------------
-$webhookSecret = get_config('enrol_mentorsubscription', 'stripe_webhook_secret');
+$stripeMode    = get_config('enrol_mentorsubscription', 'stripe_mode') ?: 'live';
+$webhookSecret = get_config('enrol_mentorsubscription',
+    $stripeMode === 'sandbox' ? 'stripe_sandbox_webhook_secret' : 'stripe_webhook_secret'
+);
 
 if (empty($webhookSecret)) {
     // Misconfiguration — log and refuse.
