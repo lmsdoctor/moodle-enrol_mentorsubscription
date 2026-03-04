@@ -413,14 +413,21 @@ class stripe_handler {
             return false;
         }
 
+        // Normalise: when the session was retrieved with expand=['subscription']
+        // $session->subscription is a full \Stripe\Subscription object, not a
+        // string. Extract the ID so it can be used safely in DB queries.
+        $stripeSubId = is_object($session->subscription)
+            ? $session->subscription->id
+            : (string) $session->subscription;
+
         // --- Idempotency: subscription already created for this session ------
         if ($DB->record_exists('enrol_mentorsub_subscriptions',
-                               ['stripe_subscription_id' => $session->subscription])) {
+                               ['stripe_subscription_id' => $stripeSubId])) {
             // Sync the order record in case this is the webhook arriving after
             // subscribe.php already fulfilled it.
             if ((bool) $orderid) {
                 $existing = $DB->get_record('enrol_mentorsub_subscriptions',
-                                            ['stripe_subscription_id' => $session->subscription],
+                                            ['stripe_subscription_id' => $stripeSubId],
                                             'id', IGNORE_MISSING);
                 if ($existing) {
                     $DB->update_record('enrol_mentorsub_orders', (object) [
@@ -437,11 +444,11 @@ class stripe_handler {
 
         // --- Retrieve full Stripe subscription for period dates ---------------
         // If the session was expanded (via fulfill_checkout_session) the
-        // subscription may already be a full object; otherwise fetch it.
+        // subscription is already a full object; otherwise fetch it by ID.
         $stripe    = $this->get_stripe_client();
-        $stripeSub = is_string($session->subscription)
-            ? $stripe->subscriptions->retrieve($session->subscription)
-            : $session->subscription;
+        $stripeSub = is_object($session->subscription)
+            ? $session->subscription
+            : $stripe->subscriptions->retrieve($stripeSubId);
 
         // --- Resolve pricing snapshot -----------------------------------------
         $pricing = (new pricing_manager())->resolve($userid, $subtypeid);
