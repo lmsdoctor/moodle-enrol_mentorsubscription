@@ -15,15 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Enrolment Sync — course enrolment/unenrolment for mentees.
+ * Enrolment Sync — course enrolment/unenrolment for mentors and mentees.
  *
  * Wraps the enrol_mentorsubscription_plugin enrol/unenrol methods to
  * provide batch operations across all subscription courses.
  *
+ * Course list is read from the plugin setting 'included_course_ids'
+ * (comma-separated integer IDs), configured at:
+ * Site administration → Plugins → Enrolments → Mentor Subscription.
+ *
  * Critical design rule: only touches enrolments created by THIS plugin.
  * Never removes enrolments from other methods (manual, cohort, etc.).
- *
- * Full implementation: M-3.5 and M-3.6
  *
  * @package    enrol_mentorsubscription
  * @copyright 2023, LMS Doctor <info@lmsdoctor.com>
@@ -35,42 +37,74 @@ namespace enrol_mentorsubscription\mentorship;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Handles course enrolment synchronisation for mentees.
+ * Handles course enrolment synchronisation for mentees and mentors.
  */
 class enrolment_sync {
 
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
     /**
-     * Enrols a mentee in all courses managed by this plugin.
+     * Returns the list of course IDs configured in the plugin settings.
      *
-     * Fetches the list from enrol_mentorsub_courses and calls
-     * enrol_mentorsubscription_plugin::enrol_mentee() for each.
+     * Reads the comma-separated 'included_course_ids' config value, splits it,
+     * filters out empty/non-numeric entries and returns an array of ints.
      *
-     * Full implementation: M-3.5
+     * @return int[]
+     */
+    private function get_course_ids(): array {
+        $raw = get_config('enrol_mentorsubscription', 'included_course_ids');
+
+        if (empty($raw)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach (explode(',', $raw) as $part) {
+            $part = trim($part);
+            if ($part !== '' && ctype_digit($part)) {
+                $ids[] = (int) $part;
+            }
+        }
+
+        return $ids;
+    }
+
+    // -------------------------------------------------------------------------
+    // Mentee enrolment
+    // -------------------------------------------------------------------------
+
+    /**
+     * Enrols a mentee in all courses defined in 'included_course_ids' setting.
+     *
+     * Called when a mentor assigns a new mentee (mentorship_manager::add_mentee)
+     * or re-activates an existing one (toggle_mentee_status).
      *
      * @param int $menteeid Mentee user ID.
      * @return void
      */
     public function enrol_mentee(int $menteeid): void {
-        global $DB;
+        $courseids = $this->get_course_ids();
 
-        $courses = $DB->get_records('enrol_mentorsub_courses', [], 'sortorder ASC');
-
-        if (empty($courses)) {
-            debugging('enrol_mentorsubscription: no courses configured for enrolment.', DEBUG_DEVELOPER);
+        if (empty($courseids)) {
+            debugging(
+                'enrol_mentorsubscription: no courses configured in included_course_ids — mentee not enrolled.',
+                DEBUG_DEVELOPER
+            );
             return;
         }
 
         /** @var \enrol_mentorsubscription_plugin $plugin */
         $plugin = enrol_get_plugin('mentorsubscription');
 
-        foreach ($courses as $course) {
+        foreach ($courseids as $courseid) {
             try {
-                $plugin->enrol_mentee($menteeid, (int) $course->courseid);
+                $plugin->enrol_mentee($menteeid, $courseid);
             } catch (\Throwable $e) {
-                // Log but do not abort — attempt all courses.
                 debugging(
                     "enrol_mentorsubscription: failed to enrol mentee {$menteeid} " .
-                    "in course {$course->courseid}: " . $e->getMessage(),
+                    "in course {$courseid}: " . $e->getMessage(),
                     DEBUG_DEVELOPER
                 );
             }
@@ -78,64 +112,67 @@ class enrolment_sync {
     }
 
     /**
-     * Unenrols a mentee from all courses managed by this plugin.
+     * Unenrols a mentee from all courses defined in 'included_course_ids' setting.
      *
-     * Only removes enrolments whose method is 'mentorsubscription'.
-     * Does not touch manual, self-enrol or cohort enrolments.
-     *
-     * Full implementation: M-3.6
+     * Only removes enrolments created by this plugin; never touches manual,
+     * self-enrol or cohort enrolments.
      *
      * @param int $menteeid Mentee user ID.
      * @return void
      */
     public function unenrol_mentee(int $menteeid): void {
-        global $DB;
-
-        $courses = $DB->get_records('enrol_mentorsub_courses', []);
+        $courseids = $this->get_course_ids();
 
         /** @var \enrol_mentorsubscription_plugin $plugin */
         $plugin = enrol_get_plugin('mentorsubscription');
 
-        foreach ($courses as $course) {
+        foreach ($courseids as $courseid) {
             try {
-                $plugin->unenrol_mentee($menteeid, (int) $course->courseid);
+                $plugin->unenrol_mentee($menteeid, $courseid);
             } catch (\Throwable $e) {
                 debugging(
                     "enrol_mentorsubscription: failed to unenrol mentee {$menteeid} " .
-                    "from course {$course->courseid}: " . $e->getMessage(),
+                    "from course {$courseid}: " . $e->getMessage(),
                     DEBUG_DEVELOPER
                 );
             }
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Mentor enrolment
+    // -------------------------------------------------------------------------
+
     /**
-     * Enrols a mentor in all courses managed by this plugin.
+     * Enrols a mentor in all courses defined in 'included_course_ids' setting.
      *
-     * Called when a new subscription is activated (checkout.session.completed).
+     * Called when a new subscription is activated (checkout.session.completed /
+     * fulfill_checkout_session).
      *
      * @param int $mentorid Mentor user ID.
      * @return void
      */
     public function enrol_mentor(int $mentorid): void {
-        global $DB;
+        $courseids = $this->get_course_ids();
 
-        $courses = $DB->get_records('enrol_mentorsub_courses', [], 'sortorder ASC');
-
-        if (empty($courses)) {
+        if (empty($courseids)) {
+            debugging(
+                'enrol_mentorsubscription: no courses configured in included_course_ids — mentor not enrolled.',
+                DEBUG_DEVELOPER
+            );
             return;
         }
 
         /** @var \enrol_mentorsubscription_plugin $plugin */
         $plugin = enrol_get_plugin('mentorsubscription');
 
-        foreach ($courses as $course) {
+        foreach ($courseids as $courseid) {
             try {
-                $plugin->enrol_mentor($mentorid, (int) $course->courseid);
+                $plugin->enrol_mentor($mentorid, $courseid);
             } catch (\Throwable $e) {
                 debugging(
                     "enrol_mentorsubscription: failed to enrol mentor {$mentorid} " .
-                    "in course {$course->courseid}: " . $e->getMessage(),
+                    "in course {$courseid}: " . $e->getMessage(),
                     DEBUG_DEVELOPER
                 );
             }
@@ -143,7 +180,7 @@ class enrolment_sync {
     }
 
     /**
-     * Unenrols a mentor from all courses managed by this plugin.
+     * Unenrols a mentor from all courses defined in 'included_course_ids' setting.
      *
      * Called when a subscription is cancelled or expires.
      *
@@ -151,20 +188,18 @@ class enrolment_sync {
      * @return void
      */
     public function unenrol_mentor(int $mentorid): void {
-        global $DB;
-
-        $courses = $DB->get_records('enrol_mentorsub_courses', []);
+        $courseids = $this->get_course_ids();
 
         /** @var \enrol_mentorsubscription_plugin $plugin */
         $plugin = enrol_get_plugin('mentorsubscription');
 
-        foreach ($courses as $course) {
+        foreach ($courseids as $courseid) {
             try {
-                $plugin->unenrol_mentor($mentorid, (int) $course->courseid);
+                $plugin->unenrol_mentor($mentorid, $courseid);
             } catch (\Throwable $e) {
                 debugging(
                     "enrol_mentorsubscription: failed to unenrol mentor {$mentorid} " .
-                    "from course {$course->courseid}: " . $e->getMessage(),
+                    "from course {$courseid}: " . $e->getMessage(),
                     DEBUG_DEVELOPER
                 );
             }
