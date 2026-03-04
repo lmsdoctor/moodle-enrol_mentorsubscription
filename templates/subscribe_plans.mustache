@@ -1,0 +1,71 @@
+{{!
+    Subscribe Plans — grid of available subscription plan cards.
+
+    Shown by enrol_page_hook() when an unenrolled user lands on a course
+    that has this enrolment method enabled, and on subscribe.php (plan
+    selection step before Stripe Checkout redirect).
+
+    Context variables (exported by classes/output/subscribe_plans_panel.php):
+      - has_plans      bool   — false when no active sub_types exist
+      - plans          array  — one entry per active enrol_mentorsub_sub_types row
+          - id                 int
+          - name               string
+          - price_display      string     e.g. "$29.99"
+          - billing_cycle      string     e.g. "monthly"
+          - max_mentees        int
+          - subscribe_url      string     URL → subscribe.php?subtypeid=N[&courseid=M]
+          - is_popular         bool       optional badge
+
+    @package    enrol_mentorsubscription
+    @copyright  2026 LMS Doctor <info@lmsdoctor.com>
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="enrol-mentorsub-plans" data-region="subscribe-plans">
+
+    {{^has_plans}}
+    <div class="alert alert-warning" role="alert">
+        {{#str}} subscribe_no_plans, enrol_mentorsubscription {{/str}}
+    </div>
+    {{/has_plans}}
+
+    {{#has_plans}}
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {{#plans}}
+        <div class="col">
+            <div class="card h-100 shadow-sm {{#is_popular}}border-primary{{/is_popular}}">
+
+                {{#is_popular}}
+                <div class="card-header bg-primary text-white text-center py-1">
+                    <small class="fw-bold">
+                        {{#str}} subscribe_popular, enrol_mentorsubscription {{/str}}
+                    </small>
+                </div>
+                {{/is_popular}}
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{name}}</h5>
+
+                    <p class="card-text mb-1">
+                        <span class="display-6 fw-bold">{{price_display}}</span>
+                        <span class="text-muted"> / {{billing_cycle}}</span>
+                    </p>
+
+                    <p class="card-text text-muted small mb-3">
+                        {{#str}} subscribe_mentee_limit, enrol_mentorsubscription, {{max_mentees}} {{/str}}
+                    </p>
+
+                    <div class="mt-auto">
+                        <a href="{{subscribe_url}}"
+                           class="btn {{#is_popular}}btn-primary{{/is_popular}}{{^is_popular}}btn-outline-primary{{/is_popular}} w-100">
+                            {{#str}} subscribe_select_plan, enrol_mentorsubscription {{/str}}
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {{/plans}}
+    </div>
+    {{/has_plans}}
+
+</div>
