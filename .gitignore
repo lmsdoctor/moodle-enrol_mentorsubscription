@@ -140,6 +140,5 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # PHP Composer dependencies — install with: composer install
-/vendor/
 composer.lock
 checkout_debug.log
