@@ -79,6 +79,7 @@ class search_users extends external_api {
                  WHERE u.deleted   = 0
                    AND u.confirmed = 1
                    AND u.id       != :currentuserid
+                   AND u.id NOT IN (SELECT menteeid FROM {enrol_mentorsub_mentees})
                    AND (
                        " . $DB->sql_like($fullnamesql, ':search1', false) . "
                        OR " . $DB->sql_like('u.email', ':search2', false) . "

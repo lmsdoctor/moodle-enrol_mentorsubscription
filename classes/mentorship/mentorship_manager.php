@@ -227,6 +227,76 @@ class mentorship_manager {
     }
 
     /**
+     * Creates a brand-new Moodle user and immediately assigns them as a mentee.
+     *
+     * Enforces the same subscription + limit guards as add_mentee().
+     * A temporary password is auto-generated and e-mailed to the new user
+     * via Moodle's standard setnew_password_and_mail() flow.
+     *
+     * @param  int       $mentorid  Mentor user ID.
+     * @param  \stdClass $data      Object with: firstname, lastname, email.
+     * @return \stdClass           The newly created mentee relationship record.
+     * @throws \moodle_exception   On validation failure or user-creation error.
+     */
+    public function create_and_assign_mentee(int $mentorid, \stdClass $data): \stdClass {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/user/lib.php');
+
+        // --- 1. Active subscription check. --------------------------------
+        $submanager   = new \enrol_mentorsubscription\subscription\subscription_manager();
+        $subscription = $submanager->get_active_subscription($mentorid);
+
+        if (!$subscription) {
+            throw new \moodle_exception('error_no_active_subscription', 'enrol_mentorsubscription');
+        }
+
+        // --- 2. Mentee limit. ---------------------------------------------
+        $active = $this->count_active_mentees($mentorid);
+        if ($active >= (int) $subscription->billed_max_mentees) {
+            throw new \moodle_exception('error_limit_reached', 'enrol_mentorsubscription');
+        }
+
+        // --- 3. Email uniqueness. -----------------------------------------
+        $email = trim($data->email);
+        if ($DB->record_exists_select(
+                'user', 'LOWER(email) = LOWER(:email) AND deleted = 0', ['email' => $email])) {
+            throw new \moodle_exception('mentee_create_email_exists', 'enrol_mentorsubscription');
+        }
+
+        // --- 4. Generate a unique username from the email address. --------
+        $baseUsername = strtolower($email);
+        $username     = $baseUsername;
+        $suffix       = 1;
+        while ($DB->record_exists('user', ['username' => $username])) {
+            $username = $baseUsername . $suffix++;
+        }
+
+        // --- 5. Create the Moodle user. -----------------------------------
+        $newuser              = new \stdClass();
+        $newuser->firstname   = trim($data->firstname);
+        $newuser->lastname    = trim($data->lastname);
+        $newuser->email       = $email;
+        $newuser->username    = $username;
+        $newuser->password    = AUTH_PASSWORD_NOT_CACHED;
+        $newuser->auth        = 'manual';
+        $newuser->confirmed   = 1;
+        $newuser->lang        = $CFG->lang;
+        $newuser->mnethostid  = $CFG->mnet_localhost_id;
+
+        $newuser->id = user_create_user($newuser, false, false);
+        // Reload full record so setnew_password_and_mail() has all fields.
+        $newuser = $DB->get_record('user', ['id' => $newuser->id], '*', MUST_EXIST);
+
+        // Auto-generate a temporary password and e-mail it to the new user.
+        setnew_password_and_mail($newuser);
+        unset_user_preference('create_password', $newuser);
+
+        // --- 6. Assign as mentee (reuses full validation chain). ----------
+        return $this->add_mentee($mentorid, (int) $newuser->id);
+    }
+
+    /**
      * Returns all mentees (active and inactive) for a mentor.
      *
      * @param int $mentorid Mentor user ID.

@@ -78,17 +78,27 @@
         {{> enrol_mentorsubscription/limit_reached_card }}
     {{/limit_reached}}
 
+    {{! ── Parent Role Warning ────────────────────────────────────── }}
+    {{#has_subscription}}
+    {{^parent_role_ok}}
+    <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+        <span class="fa fa-exclamation-circle me-2" aria-hidden="true"></span>
+        <div>{{#str}} warning_parent_role_missing, enrol_mentorsubscription {{/str}}</div>
+    </div>
+    {{/parent_role_ok}}
+    {{/has_subscription}}
+
     {{! ── Mentees List ────────────────────────────────────────────── }}
     {{#has_subscription}}
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title mb-0">{{#str}} dashboard_mentees, enrol_mentorsubscription {{/str}}</h3>
             {{^limit_reached}}
-            <button type="button"
-                    class="btn btn-primary btn-sm"
-                    data-action="add-mentee">
+            {{#parent_role_ok}}
+            <a href="{{manage_mentee_url}}" class="btn btn-primary btn-sm">
                 {{#str}} dashboard_add_mentee, enrol_mentorsubscription {{/str}}
-            </button>
+            </a>
+            {{/parent_role_ok}}
             {{/limit_reached}}
         </div>
         <div class="card-body p-0">

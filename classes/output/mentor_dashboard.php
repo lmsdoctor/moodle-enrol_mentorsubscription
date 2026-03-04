@@ -113,6 +113,18 @@ class mentor_dashboard implements \renderable, \templatable {
         $max = $ctx['max_mentees'];
         $ctx['progress_pct'] = $max > 0 ? (int) round(($activeCount / $max) * 100) : 0;
 
+        // Navigation URL for the dedicated mentee management page.
+        $ctx['manage_mentee_url'] = (new \moodle_url(
+                '/enrol/mentorsubscription/dashboard/mentee.php'))->out(false);
+
+        // Check whether the 'parent' role is configured in this Moodle instance.
+        // If false, the mentor cannot manage mentees and a warning banner is shown.
+        global $DB;
+        $ctx['parent_role_ok'] = (bool) $DB->record_exists(
+                'role',
+                ['shortname' => \enrol_mentorsubscription\mentorship\role_manager::PARENT_ROLE_SHORTNAME]
+        );
+
         return $ctx;
     }
 }

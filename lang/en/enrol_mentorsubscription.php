@@ -120,8 +120,21 @@ $string['dashboard_active_mentees']  = 'Active mentees';
 $string['dashboard_limit']           = 'Limit';
 $string['dashboard_add_mentee']                = 'Add mentee';
 $string['dashboard_mentee_search_placeholder'] = 'Search by name or email...';
-$string['dashboard_mentee_noresults']          = 'No users found.';
+$string['dashboard_mentee_noresults']          = 'No users found (or all matching users already have a mentor).';
 $string['dashboard_mentee_select_required']    = 'Please search and select a user first.';
+
+// Mentee management page (dashboard/mentee.php)
+$string['mentee_page_title']               = 'Add Mentee';
+$string['mentee_mode_assign']              = 'Assign existing user';
+$string['mentee_mode_create']              = 'Create new user';
+$string['mentee_assign_submit']            = 'Assign as mentee';
+$string['mentee_assign_success']           = 'User successfully assigned as your mentee.';
+$string['mentee_assign_no_selection']      = 'Please search and select a user before submitting.';
+$string['mentee_create_submit']            = 'Create and assign mentee';
+$string['mentee_create_success']           = 'New mentee account created. A temporary password has been sent to their email address.';
+$string['mentee_create_password_note']     = 'A temporary password will be automatically generated and emailed to the new user.';
+$string['mentee_create_email_exists']      = 'This email address is already registered in the system.';
+$string['warning_parent_role_missing']     = 'The &ldquo;Parent&rdquo; role is not yet configured in this Moodle site. Mentee management is unavailable until an administrator completes the plugin setup (Site administration &rarr; Notifications).';
 $string['dashboard_upgrade']         = 'Upgrade plan';
 $string['dashboard_limit_reached']   = 'You have reached the mentee limit for your current plan.';
 

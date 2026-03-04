@@ -177,7 +177,7 @@ function(Ajax, Notification, ModalFactory, ModalEvents, Str) {
             }).then((modal) => {
                 modal.getRoot().on(ModalEvents.save, () => handleAddMenteeSubmit(modal, selectRequired));
                 modal.show();
-                setupMenteeSearch(modal, noResults);
+                setupMenteeSearch(modal.getRoot()[0], noResults);
                 return modal;
             });
         }).catch(Notification.exception);
@@ -201,13 +201,12 @@ function(Ajax, Notification, ModalFactory, ModalEvents, Str) {
     };
 
     /**
-     * Wire up the live-search behaviour inside the add-mentee modal.
+     * Wire up the live-search behaviour inside a container element.
      *
-     * @param {Object} modal     Core modal instance.
-     * @param {string} noResults Localised "no users found" string.
+     * @param {HTMLElement} root      The DOM element containing the search inputs.
+     * @param {string}      noResults Localised "no users found" string.
      */
-    const setupMenteeSearch = (modal, noResults) => {
-        const root        = modal.getRoot()[0];
+    const setupMenteeSearch = (root, noResults) => {
         const searchInput = root.querySelector('#mentorsub-mentee-search');
         const idInput     = root.querySelector('#mentorsub-new-menteeid');
         const resultsList = root.querySelector('#mentorsub-search-results');
@@ -331,7 +330,7 @@ function(Ajax, Notification, ModalFactory, ModalEvents, Str) {
 
     return {
         /**
-         * Initialise the mentor dashboard interactions.
+         * Initialise the full mentor dashboard (toggle switches + add-mentee modal).
          * Called from dashboard/index.php via $PAGE->requires->js_call_amd(..., 'init').
          */
         init: () => {
@@ -341,6 +340,22 @@ function(Ajax, Notification, ModalFactory, ModalEvents, Str) {
             }
             bindToggleSwitches();
             bindAddMenteeButton();
+        },
+        /**
+         * Initialise only the user-search autocomplete on the dedicated mentee page.
+         * Called from dashboard/mentee.php via $PAGE->requires->js_call_amd(..., 'initAssign').
+         */
+        initAssign: () => {
+            const container = document.querySelector('[data-region="mentee-assign-form"]');
+            if (!container) {
+                return;
+            }
+            Str.get_strings([
+                {key: 'dashboard_mentee_noresults', component: 'enrol_mentorsubscription'},
+            ]).then(([noResults]) => {
+                setupMenteeSearch(container, noResults);
+                return null;
+            }).catch(Notification.exception);
         },
     };
 });
