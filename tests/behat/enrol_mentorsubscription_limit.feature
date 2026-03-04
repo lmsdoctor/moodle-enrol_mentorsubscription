@@ -24,7 +24,7 @@ Feature: Mentee limit enforcement
   @M-3.2
   Scenario: Adding a mentee beyond the plan limit is blocked
     Given I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I click on "Add Mentee" "button"
     And I set the field "Mentee username or email" to "mentee4"
     And I press "Add"
@@ -46,7 +46,7 @@ Feature: Mentee limit enforcement
   Scenario: Mentor can add a mentee after admin grants override
     Given admin has set override for mentor1 to 5
     And I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I click on "Add Mentee" "button"
     And I set the field "Mentee username or email" to "mentee4"
     And I press "Add"
@@ -56,7 +56,7 @@ Feature: Mentee limit enforcement
   @M-3.4
   Scenario: Re-activating a mentee when limit is reached is blocked
     Given I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I change mentee1 to inactive
     And I try to reactivate mentee1
     Then I should see limit is reached notification

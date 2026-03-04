@@ -44,7 +44,7 @@ Feature: Mentor subscription management
   @M-2.0
   Scenario: Mentor views available subscription plans
     Given I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     Then I should see "Starter Plan"
     And I should see "29.99"
     And I should see "Pro Plan"
@@ -53,6 +53,6 @@ Feature: Mentor subscription management
   Scenario: Mentor cannot subscribe when already subscribed
     Given mentor1 has an active subscription to "Starter Plan"
     And I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     Then I should not see "Subscribe" button next to "Starter Plan"
     And I should see my active subscription details

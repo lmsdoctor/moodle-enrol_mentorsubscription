@@ -21,7 +21,7 @@ Feature: Mentee management
   @M-3.1
   Scenario: Subscribed mentor can add a mentee
     Given I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I click on "Add Mentee" "button"
     And I set the field "Mentee username or email" to "mentee1"
     And I press "Add"
@@ -31,7 +31,7 @@ Feature: Mentee management
   @M-3.1 @M-3.5
   Scenario: Mentee is automatically enrolled in subscription courses after being added
     Given I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I click on "Add Mentee" "button"
     And I set the field "Mentee username or email" to "mentee1"
     And I press "Add"
@@ -43,7 +43,7 @@ Feature: Mentee management
   Scenario: Mentor can deactivate a mentee
     Given mentee1 is an active mentee of mentor1
     And I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I click on "Deactivate" "link_or_button" in the "Bob Learner" "table_row"
     Then I should see "Inactive" in the "Bob Learner" "table_row"
 
@@ -52,7 +52,7 @@ Feature: Mentee management
     Given mentee1 is an active mentee of mentor1
     And Bob Learner is enrolled in course "Mentor Course 1" through enrol_mentorsubscription
     When I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     And I click on "Deactivate" "link_or_button" in the "Bob Learner" "table_row"
     And I log out
     And I log in as "mentee1"

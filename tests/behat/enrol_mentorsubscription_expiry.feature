@@ -25,7 +25,7 @@ Feature: Subscription expiry and grace period
   Scenario: Expired subscription blocks adding new mentees
     Given mentor1 subscription is expired
     And I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     When I click on "Add Mentee" "button"
     And I set the field "Mentee username or email" to "mentee1"
     And I press "Add"
@@ -35,7 +35,7 @@ Feature: Subscription expiry and grace period
   Scenario: Expired subscription shows renewal prompt on dashboard
     Given mentor1 subscription is expired
     And I log in as "mentor1"
-    And I navigate to "/enrol/mentorsubscription/dashboard.php"
+    And I navigate to "/enrol/mentorsubscription/dashboard"
     Then I should see "Your subscription has expired"
     And I should see "Renew"
 
