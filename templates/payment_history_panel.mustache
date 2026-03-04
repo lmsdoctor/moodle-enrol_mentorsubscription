@@ -21,13 +21,15 @@
 <div class="enrol-mentorsub-history" data-region="payment-history">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>
-            {{#str}} adminpanel_paymenthistory, enrol_mentorsubscription {{/str}}
-            — {{fullname}}
-        </h2>
-        <a href="{{back_url}}" class="btn btn-secondary btn-sm">
-            &larr; {{#str}} back_to_admin, enrol_mentorsubscription {{/str}}
-        </a>
+        <div class="align-items-center d-flex justify-content-start">
+            <a href="{{back_url}}" class="btn btn-secondary btn-sm mr-2">
+                &larr; {{#str}} back_to_admin, enrol_mentorsubscription {{/str}}
+            </a>
+            <h2 class="mb-0">
+                {{#str}} adminpanel_paymenthistory, enrol_mentorsubscription {{/str}}
+                — {{fullname}}
+            </h2>
+        </div>
     </div>
 
     {{#has_history}}

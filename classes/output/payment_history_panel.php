@@ -86,7 +86,7 @@ class payment_history_panel implements \renderable, \templatable {
             'userid'     => $this->mentor->id,
             'history'    => $rows,
             'has_history' => !empty($rows),
-            'back_url'   => (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false),
+            'back_url'   => (new \moodle_url('/enrol/mentorsubscription/admin'))->out(false),
         ];
     }
 }
