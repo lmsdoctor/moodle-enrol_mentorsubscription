@@ -41,18 +41,52 @@ require_login();
 
 $context = context_system::instance();
 // Any authenticated user that may become a mentor can access this page.
-require_capability('enrol/mentorsubscription:viewdashboard', $context);
+require_capability('enrol/mentorsubscription:managesubscription', $context);
 
 // -------------------------------------------------------------------------
 // Parameters
 // -------------------------------------------------------------------------
-$subtypeid    = optional_param('subtypeid', 0, PARAM_INT);
-$checkoutStatus = optional_param('checkout', '', PARAM_ALPHA);   // 'success' | 'cancel'
+$subtypeid      = (int) optional_param('subtypeid',  0,  PARAM_INT);
+$checkoutStatus = optional_param('checkout',         '', PARAM_ALPHA);   // 'success' | 'cancel'
+$orderid        = (int) optional_param('orderid',    0,  PARAM_INT);
+$sessionId      = optional_param('session_id',       '', PARAM_ALPHANUMEXT);  // Stripe session ID
+$returnurl      = optional_param('returnurl',         '', PARAM_LOCALURL);    // Where to go on cancel/error
+
+// Fallback: if no returnurl supplied, go back to the plan listing itself.
+$safeReturnUrl  = !empty($returnurl)
+    ? new moodle_url($returnurl)
+    : new moodle_url('/enrol/mentorsubscription/subscribe.php');
 
 // -------------------------------------------------------------------------
-// Post-checkout feedback
+// Post-checkout: payment confirmed by Stripe
 // -------------------------------------------------------------------------
 if ($checkoutStatus === 'success') {
+    // Attempt immediate fulfillment: if Stripe confirms payment_status=paid
+    // right now, create the subscription without waiting for the webhook.
+    // The webhook remains the safety net (user closed browser, network error).
+    // The idempotency guard in fulfill_checkout_session() prevents duplicates
+    // if both paths race.
+    if (!empty($sessionId)) {
+        try {
+            (new stripe_handler())->fulfill_checkout_session($sessionId);
+        } catch (\Throwable $e) {
+            // Non-fatal: log and let the webhook handle it.
+            debugging('enrol_mentorsubscription subscribe.php: immediate fulfillment failed — ' .
+                      $e->getMessage() . '. Webhook will retry.', DEBUG_DEVELOPER);
+        }
+    } else if ((bool) $orderid) {
+        // sessionId not available: at minimum persist any order state update.
+        $orderRow = $DB->get_record('enrol_mentorsub_orders',
+                                    ['id' => $orderid, 'userid' => (int) $USER->id]);
+        if ($orderRow && $orderRow->status === 'pending') {
+            $DB->update_record('enrol_mentorsub_orders', (object) [
+                'id'           => $orderRow->id,
+                'status'       => 'processing',
+                'timemodified' => time(),
+            ]);
+        }
+    }
+
     redirect(
         new moodle_url('/enrol/mentorsubscription/dashboard.php'),
         get_string('subscribe_payment_success', 'enrol_mentorsubscription'),
@@ -61,9 +95,24 @@ if ($checkoutStatus === 'success') {
     );
 }
 
+// -------------------------------------------------------------------------
+// Post-checkout: user cancelled on Stripe's page
+// -------------------------------------------------------------------------
 if ($checkoutStatus === 'cancel') {
+    if (((bool) $orderid)) {
+        $orderRow = $DB->get_record('enrol_mentorsub_orders',
+                                    ['id' => $orderid, 'userid' => (int) $USER->id]);
+        if ($orderRow && in_array($orderRow->status, ['pending', 'processing'], true)) {
+            $DB->update_record('enrol_mentorsub_orders', (object) [
+                'id'           => $orderRow->id,
+                'status'       => 'cancelled',
+                'timemodified' => time(),
+            ]);
+        }
+    }
+
     redirect(
-        new moodle_url('/enrol/mentorsubscription/subscribe.php'),
+        $safeReturnUrl,
         get_string('subscribe_payment_cancelled', 'enrol_mentorsubscription'),
         null,
         \core\output\notification::NOTIFY_WARNING
@@ -73,45 +122,99 @@ if ($checkoutStatus === 'cancel') {
 // -------------------------------------------------------------------------
 // Redirect to Stripe Checkout when a plan is selected
 // -------------------------------------------------------------------------
-if ($subtypeid > 0) {
-    // Ensure the subtype exists and is active.
+if ((bool) $subtypeid) {
+
+    // --- Guard: user already has an active subscription -------------------
+    $activeSub = $DB->get_record('enrol_mentorsub_subscriptions',
+                                 ['userid' => (int) $USER->id, 'status' => 'active']);
+    if ($activeSub) {
+        redirect(
+            new moodle_url('/enrol/mentorsubscription/dashboard.php'),
+            get_string('subscribe_already_subscribed', 'enrol_mentorsubscription'),
+            null,
+            \core\output\notification::NOTIFY_INFO
+        );
+    }
+
+    // --- Validate subtype -------------------------------------------------
     $subtype = $DB->get_record('enrol_mentorsub_sub_types',
                                ['id' => $subtypeid, 'is_active' => 1], '*', IGNORE_MISSING);
 
     if (!$subtype) {
         redirect(
-            new moodle_url('/enrol/mentorsubscription/subscribe.php'),
+            $safeReturnUrl,
             get_string('subscribe_invalid_plan', 'enrol_mentorsubscription'),
             null,
             \core\output\notification::NOTIFY_ERROR
         );
     }
 
-    // Resolve effective pricing (applies admin overrides if any).
+    // --- Resolve effective pricing (admin overrides applied) --------------
     $pricing = (new pricing_manager())->resolve((int) $USER->id, $subtypeid);
 
+    // --- Cancel any stale pending orders for this user to avoid orphans --
+    $DB->set_field_select(
+        'enrol_mentorsub_orders',
+        'status', 'cancelled',
+        'userid = :uid AND status IN (\'pending\', \'processing\')',
+        ['uid' => (int) $USER->id]
+    );
+    $DB->set_field_select(
+        'enrol_mentorsub_orders',
+        'timemodified', time(),
+        'userid = :uid AND status = \'cancelled\'',
+        ['uid' => (int) $USER->id]
+    );
+
+    // --- Create the order record (status = pending) -----------------------
+    $now      = time();
+    $newOrder = (object) [
+        'userid'           => (int) $USER->id,
+        'subtypeid'        => $subtypeid,
+        'overrideid'       => $pricing->overrideid,
+        'stripe_session_id' => null,
+        'stripe_price_id'  => $pricing->stripe_price_id,
+        'amount'           => $pricing->billed_price,
+        'status'           => 'pending',
+        'subscriptionid'   => null,
+        'timecreated'      => $now,
+        'timemodified'     => $now,
+    ];
+    $newOrderId = $DB->insert_record('enrol_mentorsub_orders', $newOrder);
+
+    // --- Build return URLs -------------------------------------------------
+    // Stripe replaces {CHECKOUT_SESSION_ID} with the real session ID at runtime.
     $successUrl = (new moodle_url(
         '/enrol/mentorsubscription/subscribe.php',
-        ['checkout' => 'success']
-    ))->out(false);
+        ['checkout' => 'success', 'orderid' => $newOrderId]
+    ))->out(false) . '&session_id={CHECKOUT_SESSION_ID}';
 
+    $cancelUrlParams = ['checkout' => 'cancel', 'orderid' => $newOrderId];
+    if (!empty($returnurl)) {
+        $cancelUrlParams['returnurl'] = $returnurl;
+    }
     $cancelUrl = (new moodle_url(
         '/enrol/mentorsubscription/subscribe.php',
-        ['checkout' => 'cancel', 'subtypeid' => $subtypeid]
+        $cancelUrlParams
     ))->out(false);
 
+    // --- Create Stripe Checkout Session -----------------------------------
     try {
         $checkoutUrl = (new stripe_handler())->create_checkout_session(
             (int) $USER->id,
             $subtypeid,
             $pricing->stripe_price_id,
             $successUrl,
-            $cancelUrl
+            $cancelUrl,
+            $newOrderId
         );
         redirect($checkoutUrl);
     } catch (\moodle_exception $e) {
+        // Clean up the order before aborting.
+        $DB->set_field('enrol_mentorsub_orders', 'status', 'cancelled',
+                       ['id' => $newOrderId]);
         redirect(
-            new moodle_url('/enrol/mentorsubscription/subscribe.php'),
+            $safeReturnUrl,
             $e->getMessage(),
             null,
             \core\output\notification::NOTIFY_ERROR
@@ -131,6 +234,12 @@ $PAGE->set_heading(get_string('subscribe_title', 'enrol_mentorsubscription'));
 // Fetch all active subscription types.
 $subtypes = $DB->get_records('enrol_mentorsub_sub_types', ['is_active' => 1], 'price ASC');
 
+// Build the base params for plan select links — preserve returnurl if present.
+$planLinkBaseParams = [];
+if (!empty($returnurl)) {
+    $planLinkBaseParams['returnurl'] = $returnurl;
+}
+
 echo $OUTPUT->header();
 
 if (empty($subtypes)) {
@@ -143,7 +252,7 @@ if (empty($subtypes)) {
 
     foreach ($subtypes as $type) {
         $selectUrl = new moodle_url('/enrol/mentorsubscription/subscribe.php',
-                                   ['subtypeid' => $type->id]);
+                                   ['subtypeid' => $type->id] + $planLinkBaseParams);
 
         echo html_writer::start_div('col');
         echo html_writer::start_div('card h-100 shadow-sm');
@@ -158,7 +267,7 @@ if (empty($subtypes)) {
         );
         echo html_writer::tag('p',
             get_string('subscribe_mentee_limit', 'enrol_mentorsubscription',
-                       ['limit' => $type->default_max_mentees]),
+                       $type->default_max_mentees),
             ['class' => 'card-text text-muted']
         );
 

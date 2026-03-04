@@ -34,6 +34,11 @@ namespace enrol_mentorsubscription\subscription;
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once(dirname(__FILE__, 3) . '/vendor/autoload.php');
+
+
+use \Stripe\StripeClient;
+
 /**
  * Handles all Stripe API interactions for the plugin.
  */
@@ -46,18 +51,20 @@ class stripe_handler {
     /**
      * Load Stripe autoloader and return an authenticated StripeClient.
      *
-     * @return \Stripe\StripeClient
+     * @return StripeClient
      * @throws \moodle_exception If the secret key is not configured.
      */
-    private function get_stripe_client(): \Stripe\StripeClient {
-        require_once(__DIR__ . '/../../../vendor/autoload.php');
+    private function get_stripe_client(): StripeClient {
 
-        $secret = get_config('enrol_mentorsubscription', 'stripe_secret_key');
+        $mode      = get_config('enrol_mentorsubscription', 'stripe_mode') ?: 'live';
+        $configkey = ($mode === 'sandbox') ? 'stripe_sandbox_secret_key' : 'stripe_secret_key';
+        $secret    = get_config('enrol_mentorsubscription', $configkey);
+
         if (empty($secret)) {
             throw new \moodle_exception('errornostripekey', 'enrol_mentorsubscription');
         }
 
-        return new \Stripe\StripeClient($secret);
+        return new StripeClient($secret);
     }
 
     // -------------------------------------------------------------------------
@@ -246,14 +253,20 @@ class stripe_handler {
     /**
      * Create a Stripe Checkout Session and return the redirect URL.
      *
-     * Stores userid and subtypeid in session metadata so the webhook
-     * can identify which mentor triggered the checkout.
+     * Stores userid, subtypeid and orderid in session metadata so the webhook
+     * can identify which mentor triggered the checkout and which order record
+     * to mark as completed.
+     *
+     * After the session is created the local order record is updated with
+     * the Stripe session ID so both subscribe.php (success/cancel return)
+     * and the webhook can look it up.
      *
      * @param int    $userid      Mentor Moodle user ID.
      * @param int    $subtypeid   Subscription type ID (from enrol_mentorsub_sub_types).
      * @param string $priceId     Stripe Price ID (resolved by pricing_manager).
      * @param string $successUrl  Redirect URL after successful payment.
      * @param string $cancelUrl   Redirect URL if the mentor cancels.
+     * @param int    $orderid     Local order record ID (enrol_mentorsub_orders.id).
      * @return string Stripe-hosted Checkout URL.
      */
     public function create_checkout_session(
@@ -261,7 +274,8 @@ class stripe_handler {
         int $subtypeid,
         string $priceId,
         string $successUrl,
-        string $cancelUrl
+        string $cancelUrl,
+        int $orderid = 0
     ): string {
         global $DB;
 
@@ -279,6 +293,7 @@ class stripe_handler {
             'metadata'    => [
                 'userid'    => $userid,
                 'subtypeid' => $subtypeid,
+                'orderid'   => $orderid,
             ],
         ];
 
@@ -299,6 +314,17 @@ class stripe_handler {
         }
 
         $session = $stripe->checkout->sessions->create($params);
+
+        // Persist the Stripe session ID on the local order record immediately
+        // so subscribe.php (success/cancel) and the webhook can all look it up.
+        if ($orderid > 0) {
+            $DB->update_record('enrol_mentorsub_orders', (object) [
+                'id'               => $orderid,
+                'stripe_session_id' => $session->id,
+                'timemodified'     => time(),
+            ]);
+        }
+
         return $session->url;
     }
 
@@ -307,46 +333,124 @@ class stripe_handler {
     // -------------------------------------------------------------------------
 
     /**
-     * Handles checkout.session.completed — creates the initial active subscription.
+     * Public entry point for fulfilling a Stripe Checkout Session by session ID.
      *
-     * Retrieves the Stripe Subscription object to capture the billing period.
-     * Skips if a subscription for this stripe_subscription_id already exists
-     * (idempotency guard against duplicate webhook delivery).
+     * Called by subscribe.php immediately after the user returns from Stripe
+     * (success URL) so the subscription is created without waiting for the
+     * webhook. The webhook calls on_checkout_completed() which delegates to
+     * fulfill_session_object() — the idempotency guard prevents double processing.
+     *
+     * Returns true if the session was fulfilled (subscription created),
+     * false if already processed or if payment is not yet confirmed.
+     *
+     * @param string $sessionId Stripe Checkout Session ID (cs_xxx).
+     * @return bool
+     */
+    public function fulfill_checkout_session(string $sessionId): bool {
+        $stripe  = $this->get_stripe_client();
+        $session = $stripe->checkout->sessions->retrieve($sessionId, [
+            'expand' => ['subscription'],
+        ]);
+
+        // Only fulfil sessions where Stripe has confirmed the payment.
+        // 'unpaid' means asynchronous method (e.g. bank transfer) — webhook
+        // will fire later when it clears.
+        if ($session->status !== 'complete' || $session->payment_status !== 'paid') {
+            return false;
+        }
+
+        return $this->fulfill_session_object($session);
+    }
+
+    /**
+     * Handles checkout.session.completed webhook event.
+     *
+     * Thin wrapper: verifies the event object is a completed+paid session
+     * then delegates to fulfill_session_object() for the actual work.
      *
      * M-2.5
      *
      * @param \Stripe\Checkout\Session $session
      */
     private function on_checkout_completed(\Stripe\Checkout\Session $session): void {
+        // Webhook delivers this event only for completed sessions, but guard
+        // against edge cases where payment may still be pending (BNPL, etc.).
+        if ($session->payment_status !== 'paid') {
+            debugging(
+                'enrol_mentorsubscription: checkout.session.completed received but payment_status=' .
+                $session->payment_status . '. Waiting for webhook confirmation.',
+                DEBUG_DEVELOPER
+            );
+            return;
+        }
+
+        $this->fulfill_session_object($session);
+    }
+
+    /**
+     * Core fulfillment logic: creates the active subscription from a confirmed
+     * Stripe Checkout Session object.
+     *
+     * Shared by on_checkout_completed() (webhook path) and
+     * fulfill_checkout_session() (success-URL path).
+     *
+     * Idempotency: returns false immediately if a subscription record for this
+     * Stripe subscription ID already exists (covers webhook + page-return race).
+     *
+     * @param \Stripe\Checkout\Session $session A complete+paid session object.
+     * @return bool True if subscription was created, false if already existed.
+     */
+    private function fulfill_session_object(\Stripe\Checkout\Session $session): bool {
         global $DB;
 
-        $userid    = (int) ($session->metadata->userid ?? 0);
+        $userid    = (int) ($session->metadata->userid    ?? 0);
         $subtypeid = (int) ($session->metadata->subtypeid ?? 0);
+        $orderid   = (int) ($session->metadata->orderid   ?? 0);
 
         if (!$userid || !$subtypeid) {
-            debugging('enrol_mentorsubscription: checkout.session.completed missing metadata.',
+            debugging('enrol_mentorsubscription: checkout session missing userid/subtypeid metadata.',
                       DEBUG_DEVELOPER);
-            return;
+            return false;
         }
 
-        // Idempotency: skip if already processed.
+        // --- Idempotency: subscription already created for this session ------
         if ($DB->record_exists('enrol_mentorsub_subscriptions',
                                ['stripe_subscription_id' => $session->subscription])) {
-            return;
+            // Sync the order record in case this is the webhook arriving after
+            // subscribe.php already fulfilled it.
+            if ((bool) $orderid) {
+                $existing = $DB->get_record('enrol_mentorsub_subscriptions',
+                                            ['stripe_subscription_id' => $session->subscription],
+                                            'id', IGNORE_MISSING);
+                if ($existing) {
+                    $DB->update_record('enrol_mentorsub_orders', (object) [
+                        'id'               => $orderid,
+                        'status'           => 'completed',
+                        'stripe_session_id' => $session->id,
+                        'subscriptionid'   => $existing->id,
+                        'timemodified'     => time(),
+                    ]);
+                }
+            }
+            return false;
         }
 
-        // Retrieve full subscription data for period dates.
-        $stripe   = $this->get_stripe_client();
-        $stripeSub = $stripe->subscriptions->retrieve($session->subscription);
+        // --- Retrieve full Stripe subscription for period dates ---------------
+        // If the session was expanded (via fulfill_checkout_session) the
+        // subscription may already be a full object; otherwise fetch it.
+        $stripe    = $this->get_stripe_client();
+        $stripeSub = is_string($session->subscription)
+            ? $stripe->subscriptions->retrieve($session->subscription)
+            : $session->subscription;
 
-        // Resolve pricing snapshot for this mentor + type.
+        // --- Resolve pricing snapshot -----------------------------------------
         $pricing = (new pricing_manager())->resolve($userid, $subtypeid);
 
-        $submanager = new subscription_manager();
-        $submanager->create_active_subscription(
+        $submanager     = new subscription_manager();
+        $subscriptionid = $submanager->create_active_subscription(
             $userid,
             $subtypeid,
-            (float) $session->amount_subtotal / 100,   // Convert cents to dollars.
+            (float) $session->amount_subtotal / 100,
             $pricing->billed_max_mentees,
             $stripeSub->items->data[0]->plan->interval === 'year' ? 'annual' : 'monthly',
             $stripeSub->id,
@@ -356,6 +460,19 @@ class stripe_handler {
             (int) $stripeSub->current_period_end,
             $pricing->overrideid
         );
+
+        // --- Mark the order as completed --------------------------------------
+        if ((bool) $orderid) {
+            $DB->update_record('enrol_mentorsub_orders', (object) [
+                'id'               => $orderid,
+                'status'           => 'completed',
+                'stripe_session_id' => $session->id,
+                'subscriptionid'   => $subscriptionid,
+                'timemodified'     => time(),
+            ]);
+        }
+
+        return true;
     }
 
     /**
