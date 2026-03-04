@@ -86,8 +86,7 @@ if ($isEdit && $formAction === 'editsubtype') {
         );
 
     }
-    $PAGE->navbar->add($heading . ' #'.$existing->id, new moodle_url('/enrol/mentorsubscription/admin', ['formaction' => $formAction, 'subtypeid' => $existing->id]));
-}
+ }
 
 // -------------------------------------------------------------------------
 // Sub-type toggle (no form — immediate action + redirect).
@@ -263,6 +262,14 @@ if ($formAction === 'editoverride') {
     }
 }
 
+if ($isEdit && $formAction === 'editsubtype') {
+    $PAGE->navbar->add($heading . ' #'.$existing->id, new moodle_url('/enrol/mentorsubscription/admin', ['formaction' => $formAction, 'subtypeid' => $existing->id]));
+} elseif ($formAction === 'viewhistory' && (bool) $targetUser){
+    $PAGE->navbar->add(get_string('adminpanel_paymenthistory', 'enrol_mentorsubscription'));
+} elseif ($formAction === 'editoverride' && $overrideForm){
+    $PAGE->navbar->add(get_string('adminpanel_overrides', 'enrol_mentorsubscription'));
+}
+
 // -------------------------------------------------------------------------
 // Data layer
 // -------------------------------------------------------------------------
@@ -282,7 +289,6 @@ $activeMentors = array_values($DB->get_records_sql($sql));
 echo $OUTPUT->header();
 
 if ($subtypeForm) {
-    $isEdit = (bool) $subtypeId;
     echo $OUTPUT->heading($heading, 3);
     $subtypeForm->display();
 
@@ -290,7 +296,6 @@ if ($subtypeForm) {
     echo $OUTPUT->render($historyPanel);
 
 } elseif ($overrideForm) {
-    echo $OUTPUT->heading(get_string('adminpanel_overrides', 'enrol_mentorsubscription'), 3);
     $overrideForm->display();
 
 } else {
