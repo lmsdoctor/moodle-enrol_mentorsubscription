@@ -149,6 +149,37 @@
     </TABLE>
 
     <!-- ================================================================== -->
+    <!-- TABLE: enrol_mentorsub_orders                                       -->
+    <!-- One row per Stripe Checkout Session initiated. Tracks the payment   -->
+    <!-- flow state: pending → completed (webhook) or cancelled (user).     -->
+    <!-- Used to prevent duplicate subscriptions and audit the checkout.    -->
+    <!-- ================================================================== -->
+    <TABLE NAME="enrol_mentorsub_orders" COMMENT="Checkout order ledger; one row per Stripe Checkout Session initiated">
+      <FIELDS>
+        <FIELD NAME="id"               TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
+        <FIELD NAME="userid"           TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Mentor user ID"/>
+        <FIELD NAME="subtypeid"        TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="FK to enrol_mentorsub_sub_types.id"/>
+        <FIELD NAME="overrideid"       TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="Override applied at checkout time (NULL if none)"/>
+        <FIELD NAME="stripe_session_id" TYPE="char"  LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="cs_xxx — set after Stripe session is created"/>
+        <FIELD NAME="stripe_price_id"  TYPE="char"   LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="Stripe Price ID used for this checkout"/>
+        <FIELD NAME="amount"           TYPE="number" LENGTH="10"  NOTNULL="true"  SEQUENCE="false" DECIMALS="2" COMMENT="Resolved price snapshot at time of order"/>
+        <FIELD NAME="status"           TYPE="char"   LENGTH="20"  NOTNULL="true"  SEQUENCE="false" DEFAULT="pending" COMMENT="pending|completed|cancelled"/>
+        <FIELD NAME="subscriptionid"   TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="Linked subscription record — set by webhook after payment confirmed"/>
+        <FIELD NAME="timecreated"      TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+        <FIELD NAME="timemodified"     TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary"    TYPE="primary" FIELDS="id"/>
+        <KEY NAME="fk_user"    TYPE="foreign" FIELDS="userid"    REFTABLE="user"                      REFFIELDS="id"/>
+        <KEY NAME="fk_subtype" TYPE="foreign" FIELDS="subtypeid" REFTABLE="enrol_mentorsub_sub_types" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="idx_userid_status"      UNIQUE="false" FIELDS="userid, status"      COMMENT="Pending order lookup per mentor"/>
+        <INDEX NAME="idx_stripe_session_id"  UNIQUE="false" FIELDS="stripe_session_id"   COMMENT="Webhook/return lookup by Stripe session ID"/>
+      </INDEXES>
+    </TABLE>
+
+    <!-- ================================================================== -->
     <!-- TABLE: enrol_mentorsub_notifications                               -->
     <!-- Deduplication log for outgoing notifications.                      -->
     <!-- ================================================================== -->
