@@ -31,12 +31,14 @@ namespace enrol_mentorsubscription\output;
 
 defined('MOODLE_INTERNAL') || die();
 
+use renderable;
 use renderer_base;
+use templatable;
 
 /**
  * Renderable data class for the admin subscription management panel.
  */
-class admin_subscription_panel implements \renderable, \templatable {
+class admin_subscription_panel implements renderable, templatable {
 
     /** @var array Active subscription types. */
     private array $subtypes;
@@ -64,7 +66,7 @@ class admin_subscription_panel implements \renderable, \templatable {
     public function export_for_template(renderer_base $output): array {
         $subtypesCtx = [];
         foreach ($this->subtypes as $type) {
-            $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false);
+            $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin'))->out(false);
             $subtypesCtx[] = [
                 'id'               => $type->id,
                 'name'             => format_string($type->name),
@@ -81,7 +83,7 @@ class admin_subscription_panel implements \renderable, \templatable {
 
         $mentorsCtx = [];
         foreach ($this->activeMentors as $sub) {
-            $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin.php'))->out(false);
+            $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin'))->out(false);
             $mentorsCtx[] = [
                 'userid'         => $sub->userid,
                 'subtypeid'      => $sub->subtypeid,
@@ -99,7 +101,7 @@ class admin_subscription_panel implements \renderable, \templatable {
         return [
             'subtypes'         => $subtypesCtx,
             'active_mentors'   => $mentorsCtx,
-            'add_subtype_url'  => (new \moodle_url('/enrol/mentorsubscription/admin.php',
+            'add_subtype_url'  => (new \moodle_url('/enrol/mentorsubscription/admin',
                                     ['formaction' => 'editsubtype']))->out(false),
         ];
     }

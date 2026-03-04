@@ -50,6 +50,10 @@ class sub_type_form extends \moodleform {
         $mform->setType('id', PARAM_INT);
         $mform->setDefault('id', 0);
 
+        $mform->addElement('hidden', 'formaction');
+        $mform->setType('formaction', PARAM_TEXT);
+        $mform->setDefault('formaction', '');
+
         // ── Name ─────────────────────────────────────────────────────────────
         $mform->addElement('text', 'name',
             get_string('subtype_name', 'enrol_mentorsubscription'), ['size' => 50]);
@@ -84,6 +88,13 @@ class sub_type_form extends \moodleform {
         $mform->setType('stripe_price_id', PARAM_TEXT);
         $mform->addRule('stripe_price_id', null, 'required', null, 'client');
         $mform->addHelpButton('stripe_price_id', 'subtype_stripe_price_id', 'enrol_mentorsubscription');
+
+        // ── Stripe Product ID ─────────────────────────────────────────────────
+        $mform->addElement('text', 'stripe_product_id',
+            get_string('subtype_stripe_product_id', 'enrol_mentorsubscription'), ['size' => 60]);
+        $mform->setType('stripe_product_id', PARAM_TEXT);
+        $mform->addRule('stripe_product_id', null, 'required', null, 'client');
+        $mform->addHelpButton('stripe_product_id', 'subtype_stripe_product_id', 'enrol_mentorsubscription');
 
         // ── Description ──────────────────────────────────────────────────────
         $mform->addElement('textarea', 'description',

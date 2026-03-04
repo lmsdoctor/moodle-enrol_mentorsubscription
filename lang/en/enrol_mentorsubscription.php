@@ -232,6 +232,8 @@ $string['subtype_name']              = 'Plan name';
 $string['subtype_billing_cycle']     = 'Billing cycle';
 $string['subtype_price']             = 'Price';
 $string['subtype_max_mentees']       = 'Default mentee limit';
+$string['subtype_stripe_product_id'] = 'Stripe Product ID';
+$string['subtype_stripe_product_id_help'] = 'The Product ID from your Stripe dashboard (e.g. prod_1ABC...).';
 $string['subtype_stripe_price_id']   = 'Stripe Price ID';
 $string['subtype_stripe_price_id_help'] = 'The Price ID from your Stripe dashboard (e.g. price_1ABC...).';
 $string['subtype_description']       = 'Description';
@@ -246,6 +248,8 @@ $string['subtype_deactivate']        = 'Deactivate';
 $string['subtype_none']              = 'No subscription types defined. Click “Add Subscription Type” to create one.';
 $string['subtype_error_price']       = 'Price must be a positive number.';
 $string['subtype_error_max_mentees'] = 'Mentee limit must be at least 1.';
+$string['error_subtype_not_found'] = 'Subscription type not found or access denied.';
+
 
 // -------------------------------------------------------------------------
 // Payment history view (M-4.10)

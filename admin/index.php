@@ -20,16 +20,16 @@
  * Lists all subscription types and active mentor subscriptions.
  * Provides a form to add / edit per-mentor overrides.
  *
- * URL: /enrol/mentorsubscription/admin.php
+ * URL: /enrol/mentorsubscription/admin/index.php
  *
  * @package    enrol_mentorsubscription
  * @copyright  2026 LMS Doctor <info@lmsdoctor.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/../../../config.php');
 
-use enrol_mentorsubscription\output\admin_subscription_panel as panel_renderable;
+use enrol_mentorsubscription\output\admin_subscription_panel;
 use enrol_mentorsubscription\output\payment_history_panel;
 use enrol_mentorsubscription\form\admin_subscription_form;
 use enrol_mentorsubscription\form\sub_type_form;
@@ -37,29 +37,57 @@ use enrol_mentorsubscription\subscription\subscription_manager;
 
 require_login();
 
+global $SESSION, $USER, $DB, $CFG;
+
 $context = context_system::instance();
 require_capability('enrol/mentorsubscription:manageall', $context);
 
 // -------------------------------------------------------------------------
-// Page setup
-// -------------------------------------------------------------------------
-$PAGE->set_url(new moodle_url('/enrol/mentorsubscription/admin.php'));
-$PAGE->set_context($context);
-$PAGE->set_pagelayout('admin');
-$PAGE->set_title(get_string('adminpanel_title', 'enrol_mentorsubscription'));
-$PAGE->set_heading(get_string('adminpanel_title', 'enrol_mentorsubscription'));
-
-// -------------------------------------------------------------------------
 // Override form — process submission before output begins.
 // -------------------------------------------------------------------------
-$formAction = optional_param('formaction', '', PARAM_ALPHAEXT);
-$overrideId = optional_param('overrideid', 0, PARAM_INT);
-$targetUser = optional_param('userid',    0, PARAM_INT);
-$subtypeId  = optional_param('subtypeid', 0, PARAM_INT);
+$formAction = optional_param('formaction', '', PARAM_TEXT);
+$overrideId = (int) optional_param('overrideid', 0, PARAM_INT);
+$targetUser = (int) optional_param('userid',    0, PARAM_INT);
+$subtypeId  = (int) optional_param('subtypeid', 0, PARAM_INT);
 
 $overrideForm  = null;
 $subtypeForm   = null;
 $historyPanel  = null;
+$isEdit = (bool) $subtypeId;
+
+$urlbase = new moodle_url('/enrol/mentorsubscription/admin');
+$title = get_string('adminpanel_title', 'enrol_mentorsubscription');
+$heading = get_string($isEdit ? 'subtype_edit_heading' : 'subtype_add_heading', 'enrol_mentorsubscription');
+
+// -------------------------------------------------------------------------
+// Page setup
+// -------------------------------------------------------------------------
+$PAGE->set_context($context);
+$PAGE->set_url($urlbase);
+$PAGE->set_pagelayout('admin');
+$PAGE->set_title($title);
+$PAGE->set_heading($title);
+
+if($isEdit){
+    $PAGE->navbar->add($title, $urlbase);
+} else {
+    $PAGE->navbar->add($formAction === 'editsubtype' ? $heading : $title, $isEdit ? null: $urlbase);
+}
+
+// Verify existing subscription type for edits.
+if ($isEdit && $formAction === 'editsubtype') {
+    $existing = $DB->get_record('enrol_mentorsub_sub_types', ['id' => $subtypeId]);
+    if(!$existing){
+        redirect(
+            $urlbase,
+            get_string('error_subtype_not_found', 'enrol_mentorsubscription'),
+            null,
+            \core\output\notification::NOTIFY_ERROR
+        );
+
+    }
+    $PAGE->navbar->add($heading . ' #'.$existing->id, new moodle_url('/enrol/mentorsubscription/admin', ['formaction' => $formAction, 'subtypeid' => $existing->id]));
+}
 
 // -------------------------------------------------------------------------
 // Sub-type toggle (no form — immediate action + redirect).
@@ -70,7 +98,7 @@ if ($formAction === 'togglesubtype' && $subtypeId) {
     $DB->set_field('enrol_mentorsub_sub_types', 'is_active',    (int)!$rec->is_active, ['id' => $subtypeId]);
     $DB->set_field('enrol_mentorsub_sub_types', 'timemodified', time(),                ['id' => $subtypeId]);
     redirect(
-        new moodle_url('/enrol/mentorsubscription/admin.php'),
+        $urlbase,
         get_string('subtype_toggle_saved', 'enrol_mentorsubscription'),
         null,
         \core\output\notification::NOTIFY_SUCCESS
@@ -89,14 +117,14 @@ if ($formAction === 'cancelsubscription' && $targetUser) {
         $subMgr->request_cancellation((int) $sub->id, $immediately);
         $msgKey = $immediately ? 'subscription_cancelled_immediately' : 'subscription_cancelled_period_end';
         redirect(
-            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            $urlbase,
             get_string($msgKey, 'enrol_mentorsubscription'),
             null,
             \core\output\notification::NOTIFY_SUCCESS
         );
     }
     redirect(
-        new moodle_url('/enrol/mentorsubscription/admin.php'),
+        $urlbase,
         get_string('error_no_stripe_subscription', 'enrol_mentorsubscription'),
         null,
         \core\output\notification::NOTIFY_ERROR
@@ -110,13 +138,13 @@ if ($formAction === 'pausesubscription' && $targetUser) {
     if ($sub) {
         $subMgr->pause_subscription((int) $sub->id);
         redirect(
-            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            $urlbase,
             get_string('subscription_paused', 'enrol_mentorsubscription'),
             null,
             \core\output\notification::NOTIFY_SUCCESS
         );
     }
-    redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+    redirect($urlbase);
 }
 
 if ($formAction === 'resumesubscription' && $targetUser) {
@@ -126,29 +154,29 @@ if ($formAction === 'resumesubscription' && $targetUser) {
     if ($sub) {
         $subMgr->resume_subscription((int) $sub->id);
         redirect(
-            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            $urlbase,
             get_string('subscription_resumed', 'enrol_mentorsubscription'),
             null,
             \core\output\notification::NOTIFY_SUCCESS
         );
     }
-    redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+    redirect($urlbase);
 }
-
+    
 // -------------------------------------------------------------------------
 // Sub-type create / edit form.
 // -------------------------------------------------------------------------
 if ($formAction === 'editsubtype') {
-    $subtypeForm = new sub_type_form(
-        new moodle_url('/enrol/mentorsubscription/admin.php', ['formaction' => 'editsubtype'])
-    );
+    $subtypeForm = new sub_type_form();
+    $subtypeForm->set_data(['formaction' => $formAction]);
 
     if ($subtypeForm->is_cancelled()) {
-        redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+        redirect($urlbase);
     }
 
     if ($data = $subtypeForm->get_data()) {
         $now = time();
+        unset($data->formaction);
         if (!empty($data->id)) {
             // Update existing record.
             $data->timemodified = $now;
@@ -160,7 +188,7 @@ if ($formAction === 'editsubtype') {
             $DB->insert_record('enrol_mentorsub_sub_types', $data);
         }
         redirect(
-            new moodle_url('/enrol/mentorsubscription/admin.php'),
+            $urlbase,
             get_string('subtype_saved', 'enrol_mentorsubscription'),
             null,
             \core\output\notification::NOTIFY_SUCCESS
@@ -168,11 +196,8 @@ if ($formAction === 'editsubtype') {
     }
 
     // Pre-fill form for edits.
-    if ($subtypeId) {
-        $existing = $DB->get_record('enrol_mentorsub_sub_types', ['id' => $subtypeId]);
-        if ($existing) {
-            $subtypeForm->set_data($existing);
-        }
+    if ($subtypeId && $existing) {
+        $subtypeForm->set_data((array) $existing);
     }
 }
 
@@ -200,12 +225,12 @@ if ($formAction === 'editoverride') {
     }
 
     $overrideForm = new admin_subscription_form(
-        new moodle_url('/enrol/mentorsubscription/admin.php', ['formaction' => 'editoverride']),
+        new moodle_url('/enrol/mentorsubscription/admin', ['formaction' => 'editoverride']),
         []
     );
 
     if ($overrideForm->is_cancelled()) {
-        redirect(new moodle_url('/enrol/mentorsubscription/admin.php'));
+        redirect($urlbase);
     }
 
     if ($submitted = $overrideForm->get_data()) {
@@ -225,7 +250,7 @@ if ($formAction === 'editoverride') {
 
         if ($result['success']) {
             redirect(
-                new moodle_url('/enrol/mentorsubscription/admin.php'),
+                $urlbase,
                 get_string('override_saved', 'enrol_mentorsubscription'),
                 null,
                 \core\output\notification::NOTIFY_SUCCESS
@@ -258,10 +283,7 @@ echo $OUTPUT->header();
 
 if ($subtypeForm) {
     $isEdit = (bool) $subtypeId;
-    echo $OUTPUT->heading(
-        get_string($isEdit ? 'subtype_edit_heading' : 'subtype_add_heading', 'enrol_mentorsubscription'),
-        3
-    );
+    echo $OUTPUT->heading($heading, 3);
     $subtypeForm->display();
 
 } elseif ($historyPanel) {
@@ -272,7 +294,7 @@ if ($subtypeForm) {
     $overrideForm->display();
 
 } else {
-    $renderable = new panel_renderable(array_values($subtypes), $activeMentors);
+    $renderable = new admin_subscription_panel(array_values($subtypes), $activeMentors);
     echo $OUTPUT->render($renderable);
 }
 
