@@ -63,6 +63,13 @@ $PAGE->set_context($context);
 $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('mentee_page_title', 'enrol_mentorsubscription'));
 $PAGE->set_heading(get_string('mentee_page_title', 'enrol_mentorsubscription'));
+$PAGE->navbar->add(get_string('dashboard_title', 'enrol_mentorsubscription'), new moodle_url('/enrol/mentorsubscription/dashboard'));
+$PAGE->navbar->add(
+    $mode === 'create'
+        ? get_string('mentee_mode_create', 'enrol_mentorsubscription')
+        : get_string('mentee_mode_assign', 'enrol_mentorsubscription'),
+    $pageUrl
+);
 
 // ---------------------------------------------------------------------------
 // Prerequisite 1 — Parent role must be configured.
@@ -167,16 +174,6 @@ $PAGE->requires->js_call_amd('enrol_mentorsubscription/mentor_dashboard', 'initA
 // ---------------------------------------------------------------------------
 
 echo $OUTPUT->header();
-
-// Back link.
-echo html_writer::tag(
-    'p',
-    html_writer::link(
-        new moodle_url('/enrol/mentorsubscription/dashboard'),
-        '← ' . get_string('back'),
-        ['class' => 'btn btn-outline-secondary btn-sm mb-3']
-    )
-);
 
 // Non-form error (e.g. limit reached on assign submit).
 if ($error) {
