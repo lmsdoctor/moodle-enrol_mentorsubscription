@@ -167,6 +167,31 @@ class notification_manager {
     }
 
     /**
+     * Notify a mentor that their subscription has been activated.
+     *
+     * Sent immediately after checkout is fulfilled (subscription created).
+     *
+     * @param int $mentorid Mentor user ID.
+     * @return void
+     */
+    public function notify_subscription_activated(int $mentorid): void {
+        global $DB;
+
+        $mentor = $DB->get_record('user', ['id' => $mentorid], '*', IGNORE_MISSING);
+
+        if (!$mentor || $mentor->deleted) {
+            return;
+        }
+
+        $sender  = \core_user::get_noreply_user();
+        $subject = get_string('notify_subscription_activated_subject', 'enrol_mentorsubscription');
+        $body    = get_string('notify_subscription_activated_body', 'enrol_mentorsubscription',
+                             ['name' => fullname($mentor)]);
+
+        message_send($this->build_message($sender, $mentor, $subject, $body));
+    }
+
+    /**
      * Build a standard Moodle message object for this plugin.
      *
      * @param \stdClass $fromuser  Sender user record.

@@ -113,6 +113,9 @@ class mentorship_manager {
         $sync = new enrolment_sync();
         $sync->enrol_mentee($menteeid);
 
+        // --- Notify mentor and mentee. ------------------------------------
+        (new \enrol_mentorsubscription\notification_manager())->notify_mentee_enrolled($mentorid, $menteeid);
+
         // --- Dispatch event. ----------------------------------------------
         $event = \enrol_mentorsubscription\event\mentee_enrolled::create([
             'context'       => \context_system::instance(),
@@ -160,6 +163,9 @@ class mentorship_manager {
             $DB->set_field('enrol_mentorsub_mentees', 'timemodified', time(),
                            ['id' => $mentee->id]);
             $sync->unenrol_mentee($menteeid);
+
+            // Notify mentee that their access has been suspended.
+            (new \enrol_mentorsubscription\notification_manager())->notify_mentee_deactivated($menteeid, $mentorid);
 
             $event = \enrol_mentorsubscription\event\mentee_status_changed::create([
                 'context'       => \context_system::instance(),

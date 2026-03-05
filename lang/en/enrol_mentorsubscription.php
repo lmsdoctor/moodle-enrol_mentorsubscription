@@ -238,7 +238,10 @@ $string['notify_mentee_enrolled_mentee_subject'] = 'You have been enrolled by yo
 $string['notify_mentee_enrolled_mentee_body']    = 'You have been enrolled as a mentee by {$a->mentor}. They will be able to support your learning journey and view your course progress.';
 
 $string['notify_mentee_deactivated_subject']     = 'Your mentee access has been temporarily suspended';
-$string['notify_mentee_deactivated_body']        = 'Your access as a mentee of {$a->mentor} has been temporarily suspended. This may be due to a change in sub­scription status. Please contact your institution for further assistance.';
+$string['notify_mentee_deactivated_body']        = 'Your access as a mentee of {$a->mentor} has been temporarily suspended. This may be due to a change in subscription status. Please contact your institution for further assistance.';
+
+$string['notify_subscription_activated_subject'] = 'Your Mentor Subscription is now active';
+$string['notify_subscription_activated_body']    = 'Congratulations, {$a->name}! Your Mentor Subscription has been successfully activated. You now have access to all included courses and can start adding mentees from your mentor dashboard.';
 
 // -------------------------------------------------------------------------
 // Subscribe page

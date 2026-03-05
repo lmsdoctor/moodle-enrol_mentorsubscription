@@ -146,6 +146,9 @@ class subscription_manager {
         // Enrol the mentor in all subscription-gated courses.
         (new \enrol_mentorsubscription\mentorship\enrolment_sync())->enrol_mentor($userid);
 
+        // Notify mentor that their subscription is now active.
+        (new \enrol_mentorsubscription\notification_manager())->notify_subscription_activated($userid);
+
         return $newId;
     }
 
