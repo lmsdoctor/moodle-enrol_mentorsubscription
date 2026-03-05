@@ -1,22 +1,37 @@
 {{!
-    Mentor Dashboard — main view for the authenticated mentor.
+    Subscription Dashboard — view for authenticated subscribers (mentor or student).
 
     Context variables (exported by classes/output/mentor_dashboard.php):
       - has_subscription            bool
-      - subscription                object|null [status, billing_cycle, billed_price, period_end, max_mentees]
-      - mentees                     array of [menteeid, fullname, email, is_active]
-      - active_count                int
-      - max_mentees                 int
-      - limit_reached               bool
-      - warning_paused              bool  — true when status = 'paused'
-      - warning_cancel_period_end   bool  — true when cancel_at_period_end = 1
-      - warning_period_end_date     string — formatted period_end date
+      - is_mentor                   bool   — true when user holds the mentor role
+      - subscription                object|null
+            .status           string
+            .billing_cycle    string
+            .billed_price     string  (formatted, e.g. "29.99")
+            .period_start     string  (formatted date)
+            .period_end       string  (formatted date)
+            .max_mentees      int
+      - active_count                int    (mentor only)
+      - max_mentees                 int    (mentor only)
+      - limit_reached               bool   (mentor only)
+      - progress_pct                int    (mentor only)
+      - warning_paused              bool
+      - warning_cancel_period_end   bool
+      - warning_period_end_date     string
+      - parent_role_ok              bool   (mentor only)
+      - manage_mentee_url           string (mentor only)
+      - mentees                     array  (mentor only) [menteeid, fullname, email, is_active]
+      - history                     array  [status, status_label, billing_cycle, billed_price,
+                                            period_start, period_end, stripe_invoice_id,
+                                            timecreated, is_active, is_expired]
+      - has_history                 bool
 
     @package    enrol_mentorsubscription
-    @copyright  2026 ArchitectLMS Team
+    @copyright  2026 LMS Doctor
     @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 }}
 <div class="enrol-mentorsub-dashboard" data-region="mentor-dashboard">
+
     {{! ── Warning Banners ─────────────────────────────────────────────── }}
     {{#warning_paused}}
     <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
@@ -24,6 +39,7 @@
         <div>{{#str}} dashboard_warning_paused, enrol_mentorsubscription {{/str}}</div>
     </div>
     {{/warning_paused}}
+
     {{#warning_cancel_period_end}}
     <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
         <span class="fa fa-exclamation-triangle me-2" aria-hidden="true"></span>
@@ -33,25 +49,33 @@
         </div>
     </div>
     {{/warning_cancel_period_end}}
-    {{! ── Subscription Summary Card ────────────────────────────────── }}
+
+    {{! ── Subscription Summary Card ──────────────────────────────────── }}
     <div class="card mb-4">
         <div class="card-header">
-            <h3 class="card-title mb-0">{{#str}} dashboard_subscription, enrol_mentorsubscription {{/str}}</h3>
+            <h3 class="card-title mb-0">
+                {{#str}} dashboard_subscription, enrol_mentorsubscription {{/str}}
+            </h3>
         </div>
         <div class="card-body">
             {{#has_subscription}}
                 <dl class="row mb-0">
-                    <dt class="col-sm-3">{{#str}} dashboard_plan, enrol_mentorsubscription {{/str}}</dt>
-                    <dd class="col-sm-9">{{subscription.billing_cycle}}</dd>
+                    <dt class="col-sm-4">{{#str}} dashboard_plan, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-8">{{subscription.billing_cycle}}</dd>
 
-                    <dt class="col-sm-3">{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</dt>
-                    <dd class="col-sm-9">${{subscription.billed_price}}</dd>
+                    <dt class="col-sm-4">{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-8">${{subscription.billed_price}}</dd>
 
-                    <dt class="col-sm-3">{{#str}} dashboard_expires, enrol_mentorsubscription {{/str}}</dt>
-                    <dd class="col-sm-9">{{subscription.period_end}}</dd>
+                    <dt class="col-sm-4">{{#str}} dashboard_activated, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-8">{{subscription.period_start}}</dd>
 
-                    <dt class="col-sm-3">{{#str}} dashboard_active_mentees, enrol_mentorsubscription {{/str}}</dt>
-                    <dd class="col-sm-9">
+                    <dt class="col-sm-4">{{#str}} dashboard_expires, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-8">{{subscription.period_end}}</dd>
+
+                    {{! Mentee capacity — mentor only }}
+                    {{#is_mentor}}
+                    <dt class="col-sm-4">{{#str}} dashboard_active_mentees, enrol_mentorsubscription {{/str}}</dt>
+                    <dd class="col-sm-8">
                         <span data-region="active-count">{{active_count}} / {{max_mentees}}</span>
                         <div class="progress mt-1" style="height: 8px; max-width: 200px;">
                             <div class="progress-bar {{#limit_reached}}bg-danger{{/limit_reached}}{{^limit_reached}}bg-success{{/limit_reached}}"
@@ -63,6 +87,7 @@
                             </div>
                         </div>
                     </dd>
+                    {{/is_mentor}}
                 </dl>
             {{/has_subscription}}
             {{^has_subscription}}
@@ -73,12 +98,12 @@
         </div>
     </div>
 
-    {{! ── Limit Reached Card ──────────────────────────────────────── }}
+    {{! ── Mentor-only: Limit Reached + Parent Role Warning ───────────── }}
+    {{#is_mentor}}
     {{#limit_reached}}
         {{> enrol_mentorsubscription/limit_reached_card }}
     {{/limit_reached}}
 
-    {{! ── Parent Role Warning ────────────────────────────────────── }}
     {{#has_subscription}}
     {{^parent_role_ok}}
     <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
@@ -87,10 +112,12 @@
     </div>
     {{/parent_role_ok}}
     {{/has_subscription}}
+    {{/is_mentor}}
 
-    {{! ── Mentees List ────────────────────────────────────────────── }}
+    {{! ── Mentor-only: Mentee List ────────────────────────────────────── }}
+    {{#is_mentor}}
     {{#has_subscription}}
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title mb-0">{{#str}} dashboard_mentees, enrol_mentorsubscription {{/str}}</h3>
             {{^limit_reached}}
@@ -106,10 +133,64 @@
                 {{> enrol_mentorsubscription/mentee_card }}
             {{/mentees}}
             {{^mentees}}
-                <div class="p-3 text-muted">No mentees registered yet.</div>
+                <div class="p-3 text-muted">
+                    {{#str}} dashboard_no_mentees, enrol_mentorsubscription {{/str}}
+                </div>
             {{/mentees}}
         </div>
     </div>
     {{/has_subscription}}
+    {{/is_mentor}}
+
+    {{! ── Billing History — visible to all subscribers ───────────────── }}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                {{#str}} dashboard_payment_history, enrol_mentorsubscription {{/str}}
+            </h3>
+        </div>
+        <div class="card-body p-0">
+            {{#has_history}}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>{{#str}} dashboard_billing_date, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} dashboard_plan, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} dashboard_activated, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} dashboard_expires, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} dashboard_invoice, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} dashboard_status, enrol_mentorsubscription {{/str}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#history}}
+                        <tr>
+                            <td>{{timecreated}}</td>
+                            <td>{{billing_cycle}}</td>
+                            <td>${{billed_price}}</td>
+                            <td>{{period_start}}</td>
+                            <td>{{period_end}}</td>
+                            <td><small class="text-muted">{{stripe_invoice_id}}</small></td>
+                            <td>
+                                {{#is_active}}<span class="badge bg-success">{{status_label}}</span>{{/is_active}}
+                                {{#is_expired}}<span class="badge bg-secondary">{{status_label}}</span>{{/is_expired}}
+                                {{^is_active}}{{^is_expired}}<span class="badge bg-warning text-dark">{{status_label}}</span>{{/is_expired}}{{/is_active}}
+                            </td>
+                        </tr>
+                        {{/history}}
+                    </tbody>
+                </table>
+            </div>
+            {{/has_history}}
+            {{^has_history}}
+            <div class="p-3 text-muted">
+                {{#str}} dashboard_no_history, enrol_mentorsubscription {{/str}}
+            </div>
+            {{/has_history}}
+        </div>
+    </div>
 
 </div>
+

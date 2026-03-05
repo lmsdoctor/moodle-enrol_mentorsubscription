@@ -41,21 +41,37 @@ class mentor_dashboard implements \renderable, \templatable {
     /** @var \stdClass|null Active subscription record. */
     private ?\stdClass $subscription;
 
-    /** @var array List of mentee records with user data. */
+    /** @var array List of mentee records with user data (empty for non-mentors). */
     private array $mentees;
 
     /** @var string|null Warning type: null | 'paused' | 'cancel_at_period_end' */
     private ?string $warningType;
 
+    /** @var bool True when the subscriber has the mentor role in any course. */
+    private bool $isMentor;
+
+    /** @var array Full subscription/billing history, newest first. */
+    private array $history;
+
     /**
      * @param \stdClass|null $subscription  Active or paused subscription, or null.
-     * @param array          $mentees       Array of mentee+user records.
+     * @param array          $mentees       Array of mentee+user records (empty for non-mentors).
      * @param string|null    $warningType   'paused' | 'cancel_at_period_end' | null.
+     * @param bool           $isMentor      Whether the user holds the mentor role.
+     * @param array          $history       Full billing history, newest first.
      */
-    public function __construct(?\stdClass $subscription, array $mentees, ?string $warningType = null) {
+    public function __construct(
+        ?\stdClass $subscription,
+        array $mentees,
+        ?string $warningType = null,
+        bool $isMentor = false,
+        array $history = []
+    ) {
         $this->subscription = $subscription;
         $this->mentees      = $mentees;
         $this->warningType  = $warningType;
+        $this->isMentor     = $isMentor;
+        $this->history      = $history;
     }
 
     /**
@@ -70,6 +86,7 @@ class mentor_dashboard implements \renderable, \templatable {
         $ctx = [
             'has_subscription'          => !is_null($this->subscription),
             'subscription'              => null,
+            'is_mentor'                 => $this->isMentor,
             'mentees'                   => [],
             'limit_reached'             => false,
             'active_count'              => 0,
@@ -79,6 +96,8 @@ class mentor_dashboard implements \renderable, \templatable {
             'warning_period_end_date'   => ($this->subscription
                                             ? userdate($this->subscription->period_end)
                                             : ''),
+            'history'                   => [],
+            'has_history'               => false,
         ];
 
         if ($this->subscription) {
@@ -86,44 +105,69 @@ class mentor_dashboard implements \renderable, \templatable {
                 'status'        => $this->subscription->status,
                 'billing_cycle' => $this->subscription->billing_cycle,
                 'billed_price'  => number_format((float) $this->subscription->billed_price, 2),
+                'period_start'  => userdate((int) $this->subscription->period_start),
                 'period_end'    => userdate($this->subscription->period_end),
                 'max_mentees'   => $this->subscription->billed_max_mentees,
             ];
             $ctx['max_mentees'] = (int) $this->subscription->billed_max_mentees;
         }
 
+        // Mentee data — only for mentor users.
         $activeCount = 0;
-        foreach ($this->mentees as $mentee) {
-            $ctx['mentees'][] = [
-                'menteeid'   => $mentee->menteeid,
-                'fullname'   => fullname($mentee),
-                'email'      => $mentee->email,
-                'is_active'  => (bool) $mentee->is_active,
-            ];
-            if ($mentee->is_active) {
-                $activeCount++;
+        if ($this->isMentor) {
+            foreach ($this->mentees as $mentee) {
+                $ctx['mentees'][] = [
+                    'menteeid'   => $mentee->menteeid,
+                    'fullname'   => fullname($mentee),
+                    'email'      => $mentee->email,
+                    'is_active'  => (bool) $mentee->is_active,
+                ];
+                if ($mentee->is_active) {
+                    $activeCount++;
+                }
             }
         }
 
         $ctx['active_count']  = $activeCount;
-        $ctx['limit_reached'] = $this->subscription &&
+        $ctx['limit_reached'] = $this->isMentor && $this->subscription &&
                                 $activeCount >= (int) $this->subscription->billed_max_mentees;
 
-        // Pre-computed percentage for the progress bar (Mustache can't do math).
+        // Progress bar percentage (Mustache can't do math).
         $max = $ctx['max_mentees'];
-        $ctx['progress_pct'] = $max > 0 ? (int) round(($activeCount / $max) * 100) : 0;
+        $ctx['progress_pct'] = ($this->isMentor && $max > 0)
+            ? (int) round(($activeCount / $max) * 100)
+            : 0;
 
         // Navigation URL for the dedicated mentee management page.
         $ctx['manage_mentee_url'] = (new \moodle_url(
                 '/enrol/mentorsubscription/dashboard/mentee.php'))->out(false);
 
         // Check whether the 'parent' role is configured in this Moodle instance.
-        // If false, the mentor cannot manage mentees and a warning banner is shown.
         global $DB;
-        $ctx['parent_role_ok'] = (bool) $DB->record_exists(
+        $ctx['parent_role_ok'] = $this->isMentor && (bool) $DB->record_exists(
                 'role',
                 ['shortname' => \enrol_mentorsubscription\mentorship\role_manager::PARENT_ROLE_SHORTNAME]
         );
+
+        // Billing history — shown to all subscribers.
+        foreach ($this->history as $record) {
+            $ctx['history'][] = [
+                'status'           => $record->status,
+                'status_label'     => get_string(
+                                         'status_' . str_replace('_', '', $record->status),
+                                         'enrol_mentorsubscription'
+                                      ),
+                'billing_cycle'    => $record->billing_cycle,
+                'billed_price'     => number_format((float) $record->billed_price, 2),
+                'period_start'     => userdate((int) $record->period_start),
+                'period_end'       => userdate((int) $record->period_end),
+                'stripe_invoice_id' => $record->stripe_invoice_id ?? '—',
+                'timecreated'      => userdate((int) $record->timecreated),
+                'is_active'        => $record->status === 'active',
+                'is_expired'       => in_array($record->status, ['expired', 'cancelled', 'superseded']),
+            ];
+        }
+        $ctx['has_history'] = !empty($ctx['history']);
 
         return $ctx;
     }

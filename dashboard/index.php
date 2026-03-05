@@ -54,10 +54,10 @@ $PAGE->requires->js_call_amd('enrol_mentorsubscription/mentor_dashboard', 'init'
 // -------------------------------------------------------------------------
 // Data layer
 // -------------------------------------------------------------------------
-$subManager    = new subscription_manager();
-$mentorManager = new mentorship_manager();
+$subManager = new subscription_manager();
+$userid     = (int) $USER->id;
 
-$subscription = $subManager->get_current_subscription((int) $USER->id);
+$subscription = $subManager->get_current_subscription($userid);
 
 // Access control: no active/paused subscription → redirect to subscribe page.
 if (is_null($subscription)) {
@@ -77,14 +77,28 @@ if ($subscription->status === 'paused') {
     $warningType = 'cancel_at_period_end';
 }
 
-$mentees = $mentorManager->get_mentees((int) $USER->id);
+// Determine whether the subscriber is a mentor (has the mentor role in any course).
+// Non-mentor subscribers only see subscription details + billing history.
+$mentorRoleId = (int) get_config('enrol_mentorsubscription', 'mentorroleid');
+$isMentor     = $mentorRoleId > 0 && $DB->record_exists('role_assignments', [
+    'userid' => $userid,
+    'roleid' => $mentorRoleId,
+]);
+
+// Fetch mentees only for mentor users.
+$mentees = $isMentor
+    ? (new mentorship_manager())->get_mentees($userid)
+    : [];
+
+// Billing history — shown to all subscribers.
+$history = $subManager->get_history($userid);
 
 // -------------------------------------------------------------------------
 // Render
 // -------------------------------------------------------------------------
 echo $OUTPUT->header();
 
-$renderable = new dashboard_renderable($subscription, $mentees, $warningType);
+$renderable = new dashboard_renderable($subscription, $mentees, $warningType, $isMentor, $history);
 echo $OUTPUT->render($renderable);
 
 echo $OUTPUT->footer();
