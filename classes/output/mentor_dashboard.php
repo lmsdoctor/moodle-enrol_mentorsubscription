@@ -94,7 +94,7 @@ class mentor_dashboard implements \renderable, \templatable {
             'warning_paused'            => ($this->warningType === 'paused'),
             'warning_cancel_period_end' => ($this->warningType === 'cancel_at_period_end'),
             'warning_period_end_date'   => ($this->subscription
-                                            ? userdate($this->subscription->period_end)
+                                            ? $this->fmtdate((int) $this->subscription->period_end)
                                             : ''),
             'history'                   => [],
             'has_history'               => false,
@@ -105,8 +105,8 @@ class mentor_dashboard implements \renderable, \templatable {
                 'status'        => $this->subscription->status,
                 'billing_cycle' => $this->subscription->billing_cycle,
                 'billed_price'  => number_format((float) $this->subscription->billed_price, 2),
-                'period_start'  => userdate((int) $this->subscription->period_start),
-                'period_end'    => userdate($this->subscription->period_end),
+                'period_start'  => $this->fmtdate((int) $this->subscription->period_start),
+                'period_end'    => $this->fmtdate((int) $this->subscription->period_end),
                 'max_mentees'   => $this->subscription->billed_max_mentees,
             ];
             $ctx['max_mentees'] = (int) $this->subscription->billed_max_mentees;
@@ -159,10 +159,10 @@ class mentor_dashboard implements \renderable, \templatable {
                                       ),
                 'billing_cycle'    => $record->billing_cycle,
                 'billed_price'     => number_format((float) $record->billed_price, 2),
-                'period_start'     => userdate((int) $record->period_start),
-                'period_end'       => userdate((int) $record->period_end),
+                'period_start'     => $this->fmtdate((int) $record->period_start),
+                'period_end'       => $this->fmtdate((int) $record->period_end),
                 'stripe_invoice_id' => $record->stripe_invoice_id ?? '—',
-                'timecreated'      => userdate((int) $record->timecreated),
+                'timecreated'      => $this->fmtdate((int) $record->timecreated),
                 'is_active'        => $record->status === 'active',
                 'is_expired'       => in_array($record->status, ['expired', 'cancelled', 'superseded']),
             ];
@@ -170,5 +170,19 @@ class mentor_dashboard implements \renderable, \templatable {
         $ctx['has_history'] = !empty($ctx['history']);
 
         return $ctx;
+    }
+
+    /**
+     * Format a Unix timestamp as MM/DD/YYYY, respecting the user's timezone.
+     * Returns '—' for zero/missing timestamps.
+     *
+     * @param int $ts Unix timestamp.
+     * @return string
+     */
+    private function fmtdate(int $ts): string {
+        if ($ts <= 0) {
+            return '—';
+        }
+        return userdate($ts, '%m/%d/%Y');
     }
 }

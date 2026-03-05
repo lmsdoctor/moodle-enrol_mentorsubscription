@@ -102,6 +102,7 @@ class subscription_manager {
      * @param int    $periodStart     Billing period start (Unix).
      * @param int    $periodEnd       Billing period end (Unix).
      * @param int|null $overrideid    Override ID if applicable.
+     * @param string|null $stripeInvoiceId Stripe invoice ID for the initial payment, or null.
      * @return int New subscription record ID.
      */
     public function create_active_subscription(
@@ -115,7 +116,8 @@ class subscription_manager {
         string $stripePriceId,
         int $periodStart,
         int $periodEnd,
-        ?int $overrideid = null
+        ?int $overrideid = null,
+        ?string $stripeInvoiceId = null
     ): int {
         global $DB;
 
@@ -131,7 +133,7 @@ class subscription_manager {
             'stripe_subscription_id' => $stripeSubId,
             'stripe_customer_id'     => $stripeCusId,
             'stripe_payment_intent_id' => null,
-            'stripe_invoice_id'      => null,
+            'stripe_invoice_id'      => $stripeInvoiceId ?: null,
             'stripe_price_id_used'   => $stripePriceId,
             'period_start'           => $periodStart,
             'period_end'             => $periodEnd,

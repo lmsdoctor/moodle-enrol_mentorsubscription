@@ -453,6 +453,11 @@ class stripe_handler {
         // --- Resolve pricing snapshot -----------------------------------------
         $pricing = (new pricing_manager())->resolve($userid, $subtypeid);
 
+        // Extract initial invoice ID from the session (set for subscription-mode checkouts).
+        $invoiceId = isset($session->invoice) && is_string($session->invoice)
+            ? $session->invoice
+            : (is_object($session->invoice) ? ($session->invoice->id ?? null) : null);
+
         $submanager     = new subscription_manager();
         $subscriptionid = $submanager->create_active_subscription(
             $userid,
@@ -463,9 +468,10 @@ class stripe_handler {
             $stripeSub->id,
             $session->customer,
             $pricing->stripe_price_id,
-            (int) $stripeSub->current_period_start,
-            (int) $stripeSub->current_period_end,
-            $pricing->overrideid
+            (int) $stripeSub->current_period_start ?: time(),
+            (int) $stripeSub->current_period_end   ?: (time() + 30 * 86400),
+            $pricing->overrideid,
+            $invoiceId
         );
 
         // --- Mark the order as completed --------------------------------------
