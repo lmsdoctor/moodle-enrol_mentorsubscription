@@ -53,9 +53,17 @@ class role_manager {
     private const PARENT_ROLE_CAPABILITIES = [
         'moodle/user:viewdetails',
         'moodle/user:viewalldetails',
-        'moodle/user:viewhiddendetails',
-        'gradereport/user:view',
+        'moodle/user:viewprofilepictures',
+        'moodle/user:readuserposts',
+        'moodle/user:readuserblogs',
+        'moodle/user:viewuseractivitiesreport',
+        'moodle/user:editownprofile',
+        'moodle/user:editownmessageprofile',
+        'moodle/user:changeownpassword',
+        'moodle/grade:view',
         'moodle/grade:viewall',
+        'moodle/grade:viewhidden',
+        'moodle/grade:export'
     ];
 
     /**
@@ -83,7 +91,7 @@ class role_manager {
             get_string('parentrole', 'enrol_mentorsubscription'),  // full name
             self::PARENT_ROLE_SHORTNAME,                            // shortname
             get_string('parentrole_desc', 'enrol_mentorsubscription'), // description
-            'teacher'                                               // archetype
+            ''                                               // archetype
         );
 
         if (!$roleid) {
@@ -118,6 +126,31 @@ class role_manager {
         $roleid  = $this->ensure_parent_role_exists();
         $context = \context_user::instance($menteeid);
         role_assign($roleid, $mentorid, $context->id);
+    }
+
+    /**
+     * Checks whether a user holds the parent role in any CONTEXT_USER.
+     *
+     * Uses a direct DB lookup instead of ensure_parent_role_exists() to avoid
+     * creating the role as a side-effect of a read-only check.
+     *
+     * @param int $userid User to check. Defaults to the current session user (0).
+     * @return bool True if the user has at least one parent-role assignment.
+     */
+    public function user_has_parent_role(int $userid = 0): bool {
+        global $DB, $USER;
+
+        $userid = $userid > 0 ? $userid : (int) $USER->id;
+
+        $role = $DB->get_record('role', ['shortname' => self::PARENT_ROLE_SHORTNAME]);
+        if (!$role) {
+            return false;
+        }
+
+        return $DB->record_exists('role_assignments', [
+            'userid'  => $userid,
+            'roleid'  => (int) $role->id,
+        ]);
     }
 
     /**
