@@ -43,21 +43,44 @@ class create_mentee_form extends \moodleform {
      * Define form elements.
      */
     public function definition(): void {
+        global $USER, $CFG, $SESSION;
+
         $mform = $this->_form;
+
+        // IOMAD: capture company context from session (set by iomad signup plugin).
+        $company = !empty($SESSION->company) ? $SESSION->company : null;
 
         // ---------- Personal data ----------------------------------------
         $mform->addElement('text', 'firstname', get_string('firstname'));
-        $mform->setType('firstname', PARAM_NOTAGS);
+        $mform->setType('firstname', core_user::get_property_type('firstname'));
         $mform->addRule('firstname', get_string('missingfirstname'), 'required', null, 'client');
 
         $mform->addElement('text', 'lastname', get_string('lastname'));
-        $mform->setType('lastname', PARAM_NOTAGS);
+        $mform->setType('lastname', core_user::get_property_type('lastname'));
         $mform->addRule('lastname', get_string('missinglastname'), 'required', null, 'client');
 
         $mform->addElement('text', 'email', get_string('email'));
         $mform->setType('email', PARAM_RAW_TRIMMED);
         $mform->addRule('email', get_string('missingemail'), 'required', null, 'client');
         $mform->addRule('email', get_string('invalidemail'), 'email', null, 'client');
+
+        // ---------- City / Country (optional, pre-filled from mentor) ----
+        $mform->addElement('text', 'city', get_string('city'), 'maxlength="120" size="20"');
+        $mform->setType('city', core_user::get_property_type('city'));
+        $mform->setDefault('city', $USER->city ?? '');
+
+        $countrylist = get_string_manager()->get_list_of_countries();
+        $countrylist = array_merge(['' => get_string('selectacountry')], $countrylist);
+        $mform->addElement('select', 'country', get_string('country'), $countrylist);
+        $mform->setDefault('country', $USER->country ?? ($CFG->country ?? ''));
+
+        // ---------- IOMAD: hidden company fields -------------------------
+        if (!empty($company)) {
+            $mform->addElement('hidden', 'companyid', $company->id);
+            $mform->addElement('hidden', 'departmentid', $company->deptid);
+            $mform->setType('companyid', PARAM_INT);
+            $mform->setType('departmentid', PARAM_INT);
+        }
 
         // ---------- Password note ----------------------------------------
         $mform->addElement('html',
@@ -70,6 +93,16 @@ class create_mentee_form extends \moodleform {
             true,
             get_string('mentee_create_submit', 'enrol_mentorsubscription')
         );
+    }
+
+    /**
+     * Apply trim filters after data is loaded.
+     */
+    public function definition_after_data(): void {
+        $mform = $this->_form;
+        foreach (['firstname', 'lastname'] as $field) {
+            $mform->applyFilter($field, 'trim');
+        }
     }
 
     /**

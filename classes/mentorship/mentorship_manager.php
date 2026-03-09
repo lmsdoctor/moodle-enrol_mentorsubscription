@@ -289,6 +289,8 @@ class mentorship_manager {
         $newuser->confirmed   = 1;
         $newuser->lang        = $CFG->lang;
         $newuser->mnethostid  = $CFG->mnet_localhost_id;
+        $newuser->city        = trim($data->city ?? '');
+        $newuser->country     = $data->country ?? '';
 
         $newuser->id = user_create_user($newuser, false, false);
         // Reload full record so setnew_password_and_mail() has all fields.
@@ -297,6 +299,14 @@ class mentorship_manager {
         // Auto-generate a temporary password and e-mail it to the new user.
         setnew_password_and_mail($newuser);
         unset_user_preference('create_password', $newuser);
+
+        // --- IOMAD: assign to company if the form provided one. ----------
+        if (!empty($data->companyid)) {
+            require_once($CFG->dirroot . '/local/iomad/lib/company.php');
+            $companyobj = new \company((int) $data->companyid);
+            $deptid = !empty($data->departmentid) ? (int) $data->departmentid : 0;
+            $companyobj->assign_user_to_company((int) $newuser->id, $deptid);
+        }
 
         // --- 6. Assign as mentee (reuses full validation chain). ----------
         return $this->add_mentee($mentorid, (int) $newuser->id);
