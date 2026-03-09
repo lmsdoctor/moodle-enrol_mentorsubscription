@@ -77,13 +77,9 @@ if ($subscription->status === 'paused') {
     $warningType = 'cancel_at_period_end';
 }
 
-// Determine whether the subscriber is a mentor (has the mentor role in any course).
+// Determine whether the subscriber is a mentor (holds the parent role).
 // Non-mentor subscribers only see subscription details + billing history.
-$mentorRoleId = (int) get_config('enrol_mentorsubscription', 'mentorroleid');
-$isMentor     = $mentorRoleId > 0 && $DB->record_exists('role_assignments', [
-    'userid' => $userid,
-    'roleid' => $mentorRoleId,
-]);
+$isMentor = (new \enrol_mentorsubscription\mentorship\role_manager())->user_has_parent_role($userid);
 
 // Fetch mentees only for mentor users.
 $mentees = $isMentor
