@@ -48,6 +48,20 @@ $context = context_system::instance();
 require_capability('enrol/mentorsubscription:managementees', $context);
 
 // ---------------------------------------------------------------------------
+// Prerequisite 0 — User must hold the parent (mentor) role.
+// This prevents regular subscribers (non-mentors) from accessing this page
+// directly via URL, even if they have the managementees capability.
+// ---------------------------------------------------------------------------
+if (!(new role_manager())->user_has_parent_role()) {
+    redirect(
+        new moodle_url('/enrol/mentorsubscription/dashboard'),
+        get_string('error_not_a_mentor', 'enrol_mentorsubscription'),
+        null,
+        \core\output\notification::NOTIFY_ERROR
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Parameters
 // ---------------------------------------------------------------------------
 

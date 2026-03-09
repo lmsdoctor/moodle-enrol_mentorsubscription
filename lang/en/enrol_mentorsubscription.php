@@ -159,6 +159,7 @@ $string['adminpanel_paymenthistory']  = 'Payment History';
 // Errors & exceptions
 // -------------------------------------------------------------------------
 $string['error_no_active_subscription'] = 'You do not have an active subscription. Please subscribe to add mentees.';
+$string['error_not_a_mentor']           = 'Access denied. This section is only available to mentor subscribers.';
 $string['error_limit_reached']          = 'You have reached the mentee limit for your current plan. Please upgrade to add more mentees.';
 $string['error_mentee_not_found']       = 'The specified user was not found in the system.';
 $string['error_mentee_already_assigned'] = 'This user already has a mentor assigned in the system.';
