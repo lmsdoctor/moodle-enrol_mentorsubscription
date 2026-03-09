@@ -38,6 +38,7 @@ require_once(dirname(__FILE__, 3) . '/vendor/autoload.php');
 
 
 use \Stripe\StripeClient;
+use enrol_mentorsubscription\subscription\subscription_manager;
 
 /**
  * Handles all Stripe API interactions for the plugin.
@@ -458,8 +459,7 @@ class stripe_handler {
             ? $session->invoice
             : (is_object($session->invoice) ? ($session->invoice->id ?? null) : null);
 
-        $submanager     = new subscription_manager();
-        $subscriptionid = $submanager->create_active_subscription(
+        $subscriptionid = (new subscription_manager())->create_active_subscription(
             $userid,
             $subtypeid,
             (float) $session->amount_subtotal / 100,

@@ -81,7 +81,7 @@ class subscribe_plans_panel implements \renderable, \templatable {
      * @return array Template context.
      */
     public function export_for_template(renderer_base $output): array {
-        global $DB;
+        global $DB, $USER;
 
         $subtypes = $DB->get_records(
             'enrol_mentorsub_sub_types',
@@ -127,7 +127,7 @@ class subscribe_plans_panel implements \renderable, \templatable {
         $mode = get_config('enrol_mentorsubscription', 'stripe_mode') ?: 'live';
 
         return [
-            'has_plans'    => true,
+            'has_plans'    => count($plans) > 0,
             'plans'        => $plans,
             'is_test_mode' => ($mode === 'sandbox'),
         ];

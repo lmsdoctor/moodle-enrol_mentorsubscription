@@ -152,14 +152,35 @@ class enrolment_sync {
      * @param int $mentorid Mentor user ID.
      * @return void
      */
+    /**
+     * Append a structured line to the plugin's debug log file.
+     *
+     * Writes to enrol/mentorsubscription/checkout_debug.log so errors that
+     * happen inside background contexts (webhook, cron) are visible without
+     * requiring Moodle's developer debug mode to be active.
+     *
+     * @param string $step  Short label for the log entry.
+     * @param array  $data  Data to serialise as JSON.
+     */
+    private function file_log(string $step, array $data = []): void {
+        $logfile = dirname(__DIR__, 2) . '/checkout_debug.log';
+        $line    = '[' . date('Y-m-d H:i:s') . '] [ENROL_SYNC/' . $step . '] ' .
+                   json_encode($data, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        file_put_contents($logfile, $line, FILE_APPEND | LOCK_EX);
+    }
+
     public function enrol_mentor(int $mentorid): void {
         $courseids = $this->get_course_ids();
 
+        $this->file_log('ENROL_MENTOR_START', [
+            'mentorid'  => $mentorid,
+            'courseids' => $courseids,
+        ]);
+
         if (empty($courseids)) {
-            debugging(
-                'enrol_mentorsubscription: no courses configured in included_course_ids — mentor not enrolled.',
-                DEBUG_DEVELOPER
-            );
+            $msg = 'enrol_mentorsubscription: no courses configured in included_course_ids — mentor not enrolled.';
+            debugging($msg, DEBUG_DEVELOPER);
+            $this->file_log('ENROL_MENTOR_NO_COURSES', ['mentorid' => $mentorid]);
             return;
         }
 
@@ -168,8 +189,22 @@ class enrolment_sync {
 
         foreach ($courseids as $courseid) {
             try {
+                $this->file_log('ENROL_MENTOR_BEFORE_CALL', [
+                    'mentorid' => $mentorid,
+                    'courseid' => $courseid,
+                ]);
                 $plugin->enrol_mentor($mentorid, $courseid);
+                $this->file_log('ENROL_MENTOR_SUCCESS', [
+                    'mentorid' => $mentorid,
+                    'courseid' => $courseid,
+                ]);
             } catch (\Throwable $e) {
+                $this->file_log('ENROL_MENTOR_ERROR', [
+                    'mentorid' => $mentorid,
+                    'courseid' => $courseid,
+                    'error'    => $e->getMessage(),
+                    'trace'    => $e->getTraceAsString(),
+                ]);
                 debugging(
                     "enrol_mentorsubscription: failed to enrol mentor {$mentorid} " .
                     "in course {$courseid}: " . $e->getMessage(),
@@ -177,6 +212,8 @@ class enrolment_sync {
                 );
             }
         }
+
+        $this->file_log('ENROL_MENTOR_END', ['mentorid' => $mentorid]);
     }
 
     /**

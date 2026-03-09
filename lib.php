@@ -238,12 +238,15 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
      * @return void
      */
     public function enrol_mentee(int $menteeid, int $courseid, int $roleid = 0): void {
-        if ($roleid === 0) {
+        if (empty($roleid)) {
             $roleid = (int) get_config('enrol_mentorsubscription', 'studentroleid');
         }
 
         $instance = $this->get_or_create_instance($courseid);
-        $this->enrol_user($instance, $menteeid, $roleid);
+        // Pass ENROL_USER_ACTIVE explicitly so a previously-suspended enrolment
+        // is reactivated. Convert roleid=0 (unconfigured) to null so Moodle
+        // skips role assignment rather than trying to assign the invalid role 0.
+        $this->enrol_user($instance, $menteeid, $roleid, 0, 0, ENROL_USER_ACTIVE);
     }
 
     /**
@@ -280,13 +283,20 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
      * @param int $roleid    Role to assign (defaults to the configured mentor role).
      * @return void
      */
-    public function enrol_mentor(int $mentorid, int $courseid, int $roleid = 0): void {
-        if ($roleid === 0) {
+    public function enrol_mentor(int $mentorid, int $courseid, int $roleid = 0, int $timestart = 0): void {
+        if (empty($roleid)) {
             $roleid = (int) get_config('enrol_mentorsubscription', 'mentorroleid');
         }
 
+        if (empty($timestart)) {
+            $timestart = time();
+        }
+
         $instance = $this->get_or_create_instance($courseid);
-        $this->enrol_user($instance, $mentorid, $roleid);
+        // Pass ENROL_USER_ACTIVE explicitly so a previously-suspended enrolment
+        // is reactivated. Convert roleid=0 (unconfigured) to null so Moodle
+        // skips role assignment rather than trying to assign the invalid role 0.
+        $this->enrol_user($instance, $mentorid, $roleid, $timestart, 0, ENROL_USER_ACTIVE);
     }
 
     /**
