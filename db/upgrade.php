@@ -68,5 +68,29 @@ function xmldb_enrol_mentorsubscription_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026030400, 'enrol', 'mentorsubscription');
     }
 
+    // -------------------------------------------------------------------------
+    // v2026030901 — adds optional plan_profile_field_option to sub_types
+    // -------------------------------------------------------------------------
+    if ($oldversion < 2026030901) {
+
+        $table = new xmldb_table('enrol_mentorsub_sub_types');
+        $field = new xmldb_field(
+            'plan_profile_field_option',
+            XMLDB_TYPE_CHAR,
+            '255',
+            null,
+            false,   // NULLABLE — field is optional.
+            null,
+            null,
+            'billing_cycle'  // Insert after billing_cycle.
+        );
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026030901, 'enrol', 'mentorsubscription');
+    }
+
     return true;
 }

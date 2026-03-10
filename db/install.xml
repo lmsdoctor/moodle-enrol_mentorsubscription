@@ -14,9 +14,10 @@
         <FIELD NAME="id"                 TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="true"/>
         <FIELD NAME="name"               TYPE="char"   LENGTH="100" NOTNULL="true"  SEQUENCE="false" COMMENT="e.g. Monthly, Annual"/>
         <FIELD NAME="billing_cycle"      TYPE="char"   LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="monthly | annual"/>
+        <FIELD NAME="plan_profile_field_option" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Optional plan profile field value (menu option) assigned to this subscription type"/>
         <FIELD NAME="price"              TYPE="number" LENGTH="10"  NOTNULL="true"  SEQUENCE="false" DECIMALS="2" COMMENT="Base public price"/>
         <FIELD NAME="default_max_mentees" TYPE="int"   LENGTH="5"   NOTNULL="true"  SEQUENCE="false" DEFAULT="10" COMMENT="Base mentee limit"/>
-        <FIELD NAME="stripe_product_id"   TYPE="char"  LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="Stripe Product object ID"/>
+        <!-- <FIELD NAME="stripe_product_id"   TYPE="char"  LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="Stripe Product object ID"/> -->
         <FIELD NAME="stripe_price_id"    TYPE="char"   LENGTH="255" NOTNULL="true"  SEQUENCE="false" COMMENT="Stripe Price object ID"/>
         <FIELD NAME="description"        TYPE="text"                NOTNULL="false" SEQUENCE="false" COMMENT="Visible description for mentors"/>
         <FIELD NAME="features"           TYPE="text"                NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of feature strings for UI"/>
