@@ -84,17 +84,25 @@ class admin_subscription_panel implements renderable, templatable {
         $mentorsCtx = [];
         foreach ($this->activeMentors as $sub) {
             $adminBase = (new \moodle_url('/enrol/mentorsubscription/admin'))->out(false);
+            $profileBase = (new \moodle_url('/user/profile.php', ['id' => $sub->userid]))->out(false);
             $mentorsCtx[] = [
                 'userid'         => $sub->userid,
                 'subtypeid'      => $sub->subtypeid,
                 'fullname'       => fullname($sub),
                 'status'         => $sub->status,
+                'status_label'     => get_string(
+                                         'status_' . str_replace('_', '', $sub->status),
+                                         'enrol_mentorsubscription'
+                                      ),
                 'billing_cycle'  => $sub->billing_cycle,
-                'period_end'     => userdate($sub->period_end),
+                'period_end'     => $this->fmtdate((int) $sub->period_end),
                 'billed_price'   => number_format((float) $sub->billed_price, 2),
                 'max_mentees'    => $sub->billed_max_mentees,
                 'admin_url'      => $adminBase,
                 'history_url'    => $adminBase . '?formaction=viewhistory&userid=' . $sub->userid,
+                'profile_url'    => $profileBase,
+                'is_active'        => $sub->status === 'active',
+                'is_expired'       => in_array($sub->status, ['expired', 'cancelled', 'superseded']),
             ];
         }
 
@@ -104,5 +112,19 @@ class admin_subscription_panel implements renderable, templatable {
             'add_subtype_url'  => (new \moodle_url('/enrol/mentorsubscription/admin',
                                     ['formaction' => 'editsubtype']))->out(false),
         ];
+    }
+
+        /**
+     * Format a Unix timestamp as MM/DD/YYYY, respecting the user's timezone.
+     * Returns '—' for zero/missing timestamps.
+     *
+     * @param int $ts Unix timestamp.
+     * @return string
+     */
+    private function fmtdate(int $ts): string {
+        if ($ts <= 0) {
+            return '—';
+        }
+        return userdate($ts, '%m/%d/%Y');
     }
 }
