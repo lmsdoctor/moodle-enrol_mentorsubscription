@@ -375,3 +375,99 @@ class enrol_mentorsubscription_plugin extends enrol_plugin {
         return $renderer->render($panel);
     }
 }
+
+// =============================================================================
+// Plugin-level callback functions (outside the class, called by admin settings)
+// =============================================================================
+
+/**
+ * Creates or updates the 'plan_profile_field_name' custom profile field (menu type)
+ * whenever the admin saves the plan profile field settings.
+ *
+ * Logic:
+ *  1. If the enable checkbox is OFF → do nothing (preserves existing data).
+ *  2. If options textarea is empty → do nothing.
+ *  3. Create the 'Subscription Plans' profile category if it doesn't exist.
+ *  4. Create the 'plan_profile_field_name' menu field if it doesn't exist.
+ *  5. If it already exists → update param1 (options list) only.
+ *
+ * @param string $name Full setting name that triggered the callback.
+ * @return void
+ */
+function enrol_mentorsubscription_sync_plan_profile_field(string $name): void {
+    global $CFG, $DB;
+
+    // Only react to our two settings.
+    if (!in_array($name, [
+        's_enrol_mentorsubscription_enable_plan_profile_field',
+        's_enrol_mentorsubscription_plan_profile_field_options'
+    ])) {
+        return;
+    }
+
+    // Feature disabled — leave any existing field untouched.
+    if (!get_config('enrol_mentorsubscription', 'enable_plan_profile_field')) {
+        return;
+    }
+
+    $rawOptions = (string) get_config('enrol_mentorsubscription', 'plan_profile_field_options');
+    $lines      = array_filter(array_map('trim', explode("\n", $rawOptions)));
+
+    if (empty($lines)) {
+        return;
+    }
+
+    require_once($CFG->dirroot . '/user/profile/lib.php');
+
+    $param1       = implode("\n", $lines);
+    $categoryName = 'Plan Profile Category';
+
+    $fieldName    = 'Plan Profile Field Name';
+    $shortname    = 'plan_profile_field_name';
+
+    // --- 1. Ensure the profile category exists. ---------------------------
+    $category = $DB->get_record('user_info_category', ['name' => $categoryName]);
+    if (!$category) {
+        $maxSort = (int) $DB->get_field_sql('SELECT MAX(sortorder) FROM {user_info_category}');
+        $catid   = (int) $DB->insert_record('user_info_category', (object) [
+            'name'      => $categoryName,
+            'sortorder' => $maxSort + 1,
+        ]);
+    } else {
+        $catid = (int) $category->id;
+    }
+
+    // --- 2. Create or update the menu field. ------------------------------
+    $field = $DB->get_record('user_info_field', ['shortname' => $shortname]);
+    if (!$field) {
+        $maxSort = (int) $DB->get_field('user_info_field', 'MAX(sortorder)', ['categoryid' => $catid]);
+        $DB->insert_record('user_info_field', (object) [
+            'shortname'         => $shortname,
+            'name'              => $fieldName,
+            'datatype'          => 'menu',
+            'description'       => '',
+            'descriptionformat' => FORMAT_HTML,
+            'categoryid'        => $catid,
+            'sortorder'         => $maxSort + 1,
+            'required'          => 0,
+            'locked'            => 0,       // Editable by admin in user profiles.
+            'visible'           => 2,       // PROFILE_VISIBLE_ALL.
+            'forceunique'       => 0,
+            'signup'            => 0,
+            'defaultdata'       => '',
+            'defaultdataformat' => 0,
+            'param1'            => $param1,
+            'param2'            => null,
+            'param3'            => null,
+            'param4'            => null,
+            'param5'            => null,
+        ]);
+    } else {
+        // Only update options and category; never overwrite admin-level tweaks.
+        $DB->update_record('user_info_field', (object) [
+            'id'         => $field->id,
+            'param1'     => $param1,
+            'categoryid' => $catid,
+        ]);
+    }
+}

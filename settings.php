@@ -26,6 +26,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// Ensure the callback function is available when Moodle invokes it after saving settings.
+require_once($CFG->dirroot . '/enrol/mentorsubscription/lib.php');
+
 if ($ADMIN->fulltree) {
 
     // -------------------------------------------------------------------------
@@ -206,4 +209,39 @@ if ($ADMIN->fulltree) {
         get_string('settings_send_expiry_warnings_desc', 'enrol_mentorsubscription'),
         1
     ));
+
+    // -------------------------------------------------------------------------
+    // Section: Plan Profile Field
+    // -------------------------------------------------------------------------
+    $settings->add(new admin_setting_heading(
+        'enrol_mentorsubscription/planprofileheading',
+        get_string('settings_planprofileheading', 'enrol_mentorsubscription'),
+        get_string('settings_planprofileheading_desc', 'enrol_mentorsubscription')
+    ));
+
+    // Checkbox: enable/disable the automatic custom profile field.
+    $checkbox = new admin_setting_configcheckbox(
+        'enrol_mentorsubscription/enable_plan_profile_field',
+        get_string('settings_enable_plan_profile_field', 'enrol_mentorsubscription'),
+        get_string('settings_enable_plan_profile_field_desc', 'enrol_mentorsubscription'),
+        0
+    );
+    $checkbox->set_updatedcallback('enrol_mentorsubscription_sync_plan_profile_field');
+    $settings->add($checkbox);
+
+    // Textarea: one plan option per line.
+    $textarea = new admin_setting_configtextarea(
+        'enrol_mentorsubscription/plan_profile_field_options',
+        get_string('settings_plan_profile_field_options', 'enrol_mentorsubscription'),
+        get_string('settings_plan_profile_field_options_desc', 'enrol_mentorsubscription'),
+        '',
+        PARAM_TEXT
+    );
+    $textarea->set_updatedcallback('enrol_mentorsubscription_sync_plan_profile_field');
+    $settings->add($textarea);
+    $settings->hide_if(
+        'enrol_mentorsubscription/plan_profile_field_options',
+        'enrol_mentorsubscription/enable_plan_profile_field',
+        'notchecked'
+    );
 }
