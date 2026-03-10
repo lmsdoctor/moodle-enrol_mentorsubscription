@@ -46,6 +46,9 @@ class role_manager {
     /** Shortname for the parent role. */
     const PARENT_ROLE_SHORTNAME = 'parent';
 
+    /** Shortname of the custom profile field that holds the user's subscription plan. */
+    const PLAN_PROFILE_FIELD_SHORTNAME = 'plan_profile_field_name';
+
     /**
      * Capabilities to assign to the parent role.
      * All granted at CONTEXT_USER level.
@@ -169,5 +172,113 @@ class role_manager {
         $roleid  = $this->ensure_parent_role_exists();
         $context = \context_user::instance($menteeid);
         role_unassign($roleid, $mentorid, $context->id);
+    }
+
+    /**
+     * Returns the value the user has selected in the 'plan_profile_field_name'
+     * custom profile field, or an empty string if not set / field not found.
+     *
+     * @param int $userid  User ID (0 = current user).
+     * @return string Selected option value, e.g. 'Mentor Plan', or ''.
+     */
+    public function get_plan_profile_field_value(int $userid = 0): string {
+        global $DB, $USER;
+
+        $userid = $userid > 0 ? $userid : (int) $USER->id;
+
+        $field = $DB->get_record('user_info_field', ['shortname' => self::PLAN_PROFILE_FIELD_SHORTNAME]);
+        if (!$field) {
+            return '';
+        }
+
+        $data = $DB->get_record('user_info_data', [
+            'userid'  => $userid,
+            'fieldid' => (int) $field->id,
+        ]);
+
+        return $data ? (string) $data->data : '';
+    }
+
+    /**
+     * Checks whether the user's plan profile field value matches any of the
+     * configured mentor values (comma-separated config string).
+     *
+     * Comparison is case-insensitive and trims surrounding whitespace.
+     *
+     * @param int    $userid              User ID (0 = current user).
+     * @param string $mentorValuesConfig  Raw config string, e.g. "mentor, b2b".
+     * @return bool True if the user's value matches any of the allowed mentor values.
+     */
+    public function valid_plan_profile_field(int $userid = 0, string $mentorValuesConfig = ''): bool {
+        $userValue = trim($this->get_plan_profile_field_value($userid));
+        if ($userValue === '' || $mentorValuesConfig === '') {
+            return false;
+        }
+
+        $allowed = array_filter(array_map('trim', explode(',', strtolower($mentorValuesConfig))));
+
+        return in_array(strtolower($userValue), $allowed, true);
+    }
+
+    /**
+     * Sets (or clears) the user's plan profile field value.
+     *
+     * Only runs when:
+     *   - The 'enable_plan_profile_field' plugin setting is ON.
+     *   - $planOption is a non-empty string that matches one of the configured
+     *     options in 'plan_profile_field_options'.
+     *
+     * Idempotent: safe to call on every activation / renewal.
+     *
+     * @param int    $userid      User ID.
+     * @param string $planOption  Value to store (e.g. 'mentor'). Pass '' to clear.
+     * @return void
+     */
+    public function sync_plan_profile_to_user(int $userid, string $planOption): void {
+        global $DB;
+
+        // Feature disabled — nothing to do.
+        if (!get_config('enrol_mentorsubscription', 'enable_plan_profile_field')) {
+            return;
+        }
+
+        $field = $DB->get_record('user_info_field', ['shortname' => self::PLAN_PROFILE_FIELD_SHORTNAME]);
+        if (!$field) {
+            return;
+        }
+
+        // Validate that the option is among the configured choices.
+        if ($planOption !== '') {
+            $rawOptions = get_config('enrol_mentorsubscription', 'plan_profile_field_options');
+            $validOptions = array_filter(array_map('trim', explode("\n", (string) $rawOptions)));
+            $validLower   = array_map('strtolower', $validOptions);
+            if (!in_array(strtolower($planOption), $validLower, true)) {
+                debugging(
+                    "enrol_mentorsubscription: plan_profile_field_option '{$planOption}' " .
+                    "is not a valid option — profile field not updated for user {$userid}.",
+                    DEBUG_DEVELOPER
+                );
+                return;
+            }
+        }
+
+        $existing = $DB->get_record('user_info_data', [
+            'userid'  => $userid,
+            'fieldid' => (int) $field->id,
+        ]);
+
+        if ($existing) {
+            $DB->update_record('user_info_data', (object) [
+                'id'   => $existing->id,
+                'data' => $planOption,
+            ]);
+        } else {
+            $DB->insert_record('user_info_data', (object) [
+                'userid'  => $userid,
+                'fieldid' => (int) $field->id,
+                'data'    => $planOption,
+                'dataformat' => 0,
+            ]);
+        }
     }
 }

@@ -234,13 +234,29 @@ if ($ADMIN->fulltree) {
         'enrol_mentorsubscription/plan_profile_field_options',
         get_string('settings_plan_profile_field_options', 'enrol_mentorsubscription'),
         get_string('settings_plan_profile_field_options_desc', 'enrol_mentorsubscription'),
-        '',
+        "learner\n mentor\n b2b",
         PARAM_TEXT
     );
     $textarea->set_updatedcallback('enrol_mentorsubscription_sync_plan_profile_field');
     $settings->add($textarea);
     $settings->hide_if(
         'enrol_mentorsubscription/plan_profile_field_options',
+        'enrol_mentorsubscription/enable_plan_profile_field',
+        'notchecked'
+    );
+
+    // Text: comma-separated list of option values that identify a mentor.
+    $mentor = new admin_setting_configtext(
+        'enrol_mentorsubscription/mentor_plan_profile_field',
+        get_string('settings_mentor_plan_profile_field', 'enrol_mentorsubscription'),
+        get_string('settings_mentor_plan_profile_field_desc', 'enrol_mentorsubscription'),
+        '',
+        PARAM_TEXT
+    );
+    $mentor->set_updatedcallback('enrol_mentorsubscription_sync_plan_profile_field');
+    $settings->add($mentor);
+    $settings->hide_if(
+        'enrol_mentorsubscription/mentor_plan_profile_field',
         'enrol_mentorsubscription/enable_plan_profile_field',
         'notchecked'
     );

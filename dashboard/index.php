@@ -77,9 +77,20 @@ if ($subscription->status === 'paused') {
     $warningType = 'cancel_at_period_end';
 }
 
-// Determine whether the subscriber is a mentor (holds the parent role).
+// Determine whether the subscriber is a mentor by checking their selected
+// 'plan_profile_field_name' custom profile field value.
 // Non-mentor subscribers only see subscription details + billing history.
-$isMentor = (new \enrol_mentorsubscription\mentorship\role_manager())->user_has_parent_role($userid);
+$isMentor = false;
+$enable_plan_profile_field = get_config('enrol_mentorsubscription', 'enable_plan_profile_field');
+$mentor_plan_profile_field = get_config('enrol_mentorsubscription', 'mentor_plan_profile_field');
+
+if(!$enable_plan_profile_field){
+    $isMentor = (new \enrol_mentorsubscription\mentorship\role_manager())
+                        ->user_has_parent_role($userid); 
+} elseif ($mentor_plan_profile_field && $enable_plan_profile_field) {
+    $isMentor = (new \enrol_mentorsubscription\mentorship\role_manager())
+                        ->valid_plan_profile_field($userid, $mentor_plan_profile_field);
+}
 
 // Fetch mentees only for mentor users.
 $mentees = $isMentor
