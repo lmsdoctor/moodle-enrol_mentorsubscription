@@ -79,6 +79,14 @@ $string['settings_studentroleid']              = 'Student Role';
 $string['settings_studentroleid_desc']         = 'Role assigned to mentees when enrolled in subscription courses.';
 $string['settings_included_course_ids']        = 'Included Course IDs';
 $string['settings_included_course_ids_desc']   = 'Comma-separated list of course IDs included in all subscriptions. Managed via the admin panel at runtime.';
+$string['settings_planprofileheading']              = 'Plan Profile Field';
+$string['settings_planprofileheading_desc']         = 'Automatically creates (or updates) a menu-type custom profile field to store the subscription plan assigned to each user.';
+$string['settings_enable_plan_profile_field']       = 'Enable plan profile field';
+$string['settings_enable_plan_profile_field_desc']  = 'When enabled, a menu custom profile field named <em>plan_profile_field_name</em> will be created or updated with the options below. Field will be editable by administrators on each user\'s profile.';
+$string['settings_plan_profile_field_options']      = 'Plan type options';
+$string['settings_plan_profile_field_options_desc'] = 'Enter one option per line. These will become the choices in the subscription profile menu on each user\'s profile page.';
+$string['settings_plan_profile_category']           = 'Subscription Plans';
+$string['settings_plan_profile_field_name']         = 'Subscription Plan';
 $string['settings_send_expiry_warnings']       = 'Send Expiry Warnings';
 $string['settings_send_expiry_warnings_desc']  = 'Enable or disable the automatic expiry warning notification emails to mentors.';
 
@@ -149,9 +157,9 @@ $string['mentee_deactivate']  = 'Deactivate';
 // -------------------------------------------------------------------------
 // Admin panel
 // -------------------------------------------------------------------------
-$string['adminpanel_title']           = 'Mentor Subscription Administration';
-$string['adminpanel_subtypes']        = 'Subscription Types';
-$string['adminpanel_mentors']         = 'Active Mentors';
+$string['adminpanel_title']           = 'Plans Administration';
+$string['adminpanel_subtypes']        = 'Subscription Plans';
+$string['adminpanel_mentors']         = 'Active Subscriptions';
 $string['adminpanel_overrides']       = 'Mentor Overrides';
 $string['adminpanel_paymenthistory']  = 'Payment History';
 
@@ -276,6 +284,7 @@ $string['mentee_activate']             = 'Toggle mentee status';
 // -------------------------------------------------------------------------
 $string['subtype_name']              = 'Plan name';
 $string['subtype_billing_cycle']     = 'Billing cycle';
+$string['subtype_profile']           = 'Subscription profile';
 $string['subtype_price']             = 'Price';
 $string['subtype_max_mentees']       = 'Default mentee limit';
 $string['subtype_stripe_product_id'] = 'Stripe Product ID';
@@ -285,16 +294,19 @@ $string['subtype_stripe_price_id_help'] = 'The Price ID from your Stripe dashboa
 $string['subtype_description']       = 'Description';
 $string['subtype_sort_order']        = 'Sort order';
 $string['subtype_is_active']         = 'Active';
-$string['subtype_add_heading']       = 'Add Subscription Type';
-$string['subtype_edit_heading']      = 'Edit Subscription Type';
-$string['subtype_saved']             = 'Subscription type saved successfully.';
-$string['subtype_toggle_saved']      = 'Subscription type status updated.';
+$string['subtype_add_heading']       = 'Add Plan';
+$string['subtype_edit_heading']      = 'Edit Plan';
+$string['subtype_saved']             = 'Plan saved successfully.';
+$string['subtype_toggle_saved']      = 'Plan status updated.';
 $string['subtype_activate']          = 'Activate';
 $string['subtype_deactivate']        = 'Deactivate';
-$string['subtype_none']              = 'No subscription types defined. Click “Add Subscription Type” to create one.';
+$string['subtype_none']              = 'No plans defined. Click "Add Plan" to create one.';
 $string['subtype_error_price']       = 'Price must be a positive number.';
 $string['subtype_error_max_mentees'] = 'Mentee limit must be at least 1.';
+$string['subtype_error_plan_profile']         = 'Please select a plan profile option.';
+$string['subtype_error_plan_profile_invalid'] = 'The selected plan profile option is not valid.';
 $string['error_subtype_not_found'] = 'Subscription type not found or access denied.';
+
 
 
 // -------------------------------------------------------------------------
@@ -306,6 +318,7 @@ $string['history_col_cycle']    = 'Cycle';
 $string['history_col_price']    = 'Price charged';
 $string['history_col_limit']    = 'Mentee limit';
 $string['history_col_status']   = 'Status';
+$string['history_col_subscription']   = 'Subscription';
 $string['history_col_invoice']  = 'Stripe Invoice ID';
 $string['history_col_mentor']   = 'Mentor';
 $string['history_no_records']   = 'No payment records found for this mentor.';
@@ -351,6 +364,7 @@ $string['dashboard_payment_history']             = 'Billing History';
 $string['dashboard_billing_date']                = 'Date';
 $string['dashboard_invoice']                     = 'Invoice';
 $string['dashboard_status']                      = 'Status';
+$string['dashboard_subscription']   = 'Subscription';
 $string['dashboard_no_history']                  = 'No billing records found.';
 $string['dashboard_no_mentees']                  = 'No mentees registered yet.';
 

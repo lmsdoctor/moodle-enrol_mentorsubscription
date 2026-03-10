@@ -77,20 +77,24 @@
             <table class="table table-sm table-hover mb-0">
                 <thead class="thead-light">
                     <tr>
-                        <th>{{#str}} history_col_mentor, enrol_mentorsubscription {{/str}}</th>
-                        <th>Status</th>
-                        <th>Cycle</th>
-                        <th>Price</th>
-                        <th>Mentees</th>
-                        <th>Expires</th>
+                        <th>{{#str}} user, core {{/str}}</th>
+                        <th>{{#str}} dashboard_subscription, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} dashboard_cycle, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} dashboard_mentees, enrol_mentorsubscription {{/str}}</th>
+                        <th>{{#str}} dashboard_expires, enrol_mentorsubscription {{/str}}</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {{#active_mentors}}
                     <tr>
-                        <td>{{fullname}}</td>
-                        <td><span class="badge badge-info">{{status}}</span></td>
+                        <td><a class="blue-text d-flex align-items-center" href="{{profile_url}}" target="_blank"><i class="fa fa-link mr-1 " aria-hidden="true"></i> {{fullname}}</a></td>
+                        <td>
+                            {{#is_active}}<span class="badge bg-success">{{status_label}}</span>{{/is_active}}
+                            {{#is_expired}}<span class="badge bg-secondary">{{status_label}}</span>{{/is_expired}}
+                            {{^is_active}}{{^is_expired}}<span class="badge bg-warning text-dark">{{status_label}}</span>{{/is_expired}}{{/is_active}}
+                        </td>
                         <td>{{billing_cycle}}</td>
                         <td>${{billed_price}}</td>
                         <td>— / {{max_mentees}}</td>
