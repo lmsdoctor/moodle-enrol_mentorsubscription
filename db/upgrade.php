@@ -105,7 +105,8 @@ function xmldb_enrol_mentorsubscription_upgrade(int $oldversion): bool {
             null,
             false,
             null,
-            null
+            null,
+            'status'
         );
 
         // Add to enrol_mentorsub_subscriptions.
