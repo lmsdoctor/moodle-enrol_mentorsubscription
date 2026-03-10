@@ -83,13 +83,18 @@ if ($subscription->status === 'paused') {
 $isMentor = false;
 $enable_plan_profile_field = get_config('enrol_mentorsubscription', 'enable_plan_profile_field');
 $mentor_plan_profile_field = get_config('enrol_mentorsubscription', 'mentor_plan_profile_field');
+$roleMgr  = new \enrol_mentorsubscription\mentorship\role_manager();
 
 if(!$enable_plan_profile_field){
-    $isMentor = (new \enrol_mentorsubscription\mentorship\role_manager())
-                        ->user_has_parent_role($userid); 
+    $isMentor = $roleMgr->user_has_parent_role($userid); 
 } elseif ($mentor_plan_profile_field && $enable_plan_profile_field) {
-    $isMentor = (new \enrol_mentorsubscription\mentorship\role_manager())
-                        ->valid_plan_profile_field($userid, $mentor_plan_profile_field);
+    // Primary check: subscription snapshot (what the user actually paid for).
+    $isMentor = $roleMgr->valid_plan_profile_field_from_subscription($userid, $mentor_plan_profile_field);
+
+    // Fallback: user profile field (covers manually-assigned or legacy accounts).
+    if (!$isMentor) {
+        $isMentor = $roleMgr->valid_plan_profile_field($userid, $mentor_plan_profile_field);
+    }
 }
 
 // Fetch mentees only for mentor users.

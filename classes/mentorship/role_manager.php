@@ -221,6 +221,45 @@ class role_manager {
     }
 
     /**
+     * Checks whether the user is a mentor by reading the plan_profile_field_option
+     * snapshot stored on their active subscription record.
+     *
+     * This is an alternative to valid_plan_profile_field() which reads from the
+     * user profile. Use this method when you want to base the check on what the
+     * user actually paid for, regardless of any profile edits.
+     *
+     * @param int    $userid              User ID (0 = current user).
+     * @param string $mentorValuesConfig  Comma-separated mentor values, e.g. "mentor, b2b".
+     * @return bool True if the active subscription's plan_profile_field_option
+     *              matches any of the configured mentor values.
+     */
+    public function valid_plan_profile_field_from_subscription(int $userid = 0, string $mentorValuesConfig = ''): bool {
+        global $DB, $USER;
+
+        $userid = $userid > 0 ? $userid : (int) $USER->id;
+
+        if ($mentorValuesConfig === '') {
+            return false;
+        }
+
+        $subValue = $DB->get_field_select(
+            'enrol_mentorsub_subscriptions',
+            'plan_profile_field_option',
+            "userid = :uid AND status IN ('active', 'paused') ORDER BY id DESC",
+            ['uid' => $userid],
+            IGNORE_MISSING
+        );
+
+        if ($subValue === false || $subValue === null || trim($subValue) === '') {
+            return false;
+        }
+
+        $allowed = array_filter(array_map('trim', explode(',', strtolower($mentorValuesConfig))));
+
+        return in_array(strtolower(trim($subValue)), $allowed, true);
+    }
+
+    /**
      * Sets (or clears) the user's plan profile field value.
      *
      * Only runs when:
