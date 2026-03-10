@@ -221,16 +221,17 @@ if ((bool) $subtypeid) {
     // --- Create the order record (status = pending) -----------------------
     $now      = time();
     $newOrder = (object) [
-        'userid'           => (int) $USER->id,
-        'subtypeid'        => $subtypeid,
-        'overrideid'       => $pricing->overrideid,
-        'stripe_session_id' => null,
-        'stripe_price_id'  => $pricing->stripe_price_id,
-        'amount'           => $pricing->billed_price,
-        'status'           => 'pending',
-        'subscriptionid'   => null,
-        'timecreated'      => $now,
-        'timemodified'     => $now,
+        'userid'                   => (int) $USER->id,
+        'subtypeid'                => $subtypeid,
+        'overrideid'               => $pricing->overrideid,
+        'stripe_session_id'        => null,
+        'stripe_price_id'          => $pricing->stripe_price_id,
+        'amount'                   => $pricing->billed_price,
+        'status'                   => 'pending',
+        'subscriptionid'           => null,
+        'plan_profile_field_option' => $subtype->plan_profile_field_option ?? null,
+        'timecreated'              => $now,
+        'timemodified'             => $now,
     ];
     $newOrderId = $DB->insert_record('enrol_mentorsub_orders', $newOrder);
     msub_log($debugLog, 'ORDER_CREATED', ['orderid' => $newOrderId]);

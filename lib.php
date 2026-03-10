@@ -25,6 +25,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use enrol_mentorsubscription\mentorship\role_manager;
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -400,7 +402,8 @@ function enrol_mentorsubscription_sync_plan_profile_field(string $name): void {
     // Only react to our two settings.
     if (!in_array($name, [
         's_enrol_mentorsubscription_enable_plan_profile_field',
-        's_enrol_mentorsubscription_plan_profile_field_options'
+        's_enrol_mentorsubscription_plan_profile_field_options',
+        's_enrol_mentorsubscription_mentor_plan_profile_field'
     ])) {
         return;
     }
@@ -423,7 +426,7 @@ function enrol_mentorsubscription_sync_plan_profile_field(string $name): void {
     $categoryName = 'Plan Profile Category';
 
     $fieldName    = 'Plan Profile Field Name';
-    $shortname    = 'plan_profile_field_name';
+    $shortname    = role_manager::PLAN_PROFILE_FIELD_SHORTNAME;
 
     // --- 1. Ensure the profile category exists. ---------------------------
     $category = $DB->get_record('user_info_category', ['name' => $categoryName]);

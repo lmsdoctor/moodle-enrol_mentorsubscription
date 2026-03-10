@@ -471,7 +471,9 @@ class stripe_handler {
             (int) $stripeSub->current_period_start ?: time(),
             (int) $stripeSub->current_period_end   ?: (time() + 30 * 86400),
             $pricing->overrideid,
-            $invoiceId
+            $invoiceId,
+            // Snapshot plan_profile_field_option from the order record if available.
+            $orderid ? ($DB->get_field('enrol_mentorsub_orders', 'plan_profile_field_option', ['id' => $orderid]) ?: null) : null
         );
 
         // --- Mark the order as completed --------------------------------------
@@ -547,6 +549,8 @@ class stripe_handler {
             'stripe_price_id_used'     => $pricing->stripe_price_id,
             'period_start'             => (int) $line->period->start,
             'period_end'               => (int) $line->period->end,
+            // Carry forward the snapshot from the current cycle.
+            'plan_profile_field_option' => $existing->plan_profile_field_option ?? null,
         ]);
     }
 

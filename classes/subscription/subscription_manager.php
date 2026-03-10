@@ -117,36 +117,44 @@ class subscription_manager {
         int $periodStart,
         int $periodEnd,
         ?int $overrideid = null,
-        ?string $stripeInvoiceId = null
+        ?string $stripeInvoiceId = null,
+        ?string $planProfileFieldOption = null
     ): int {
         global $DB;
 
         $now    = time();
         $record = (object) [
-            'userid'                 => $userid,
-            'subtypeid'              => $subtypeid,
-            'overrideid'             => $overrideid,
-            'billed_price'           => $billedPrice,
-            'billed_max_mentees'     => $billedMaxMentees,
-            'billing_cycle'          => $billingCycle,
-            'status'                 => 'active',
-            'stripe_subscription_id' => $stripeSubId,
-            'stripe_customer_id'     => $stripeCusId,
+            'userid'                   => $userid,
+            'subtypeid'                => $subtypeid,
+            'overrideid'               => $overrideid,
+            'billed_price'             => $billedPrice,
+            'billed_max_mentees'       => $billedMaxMentees,
+            'billing_cycle'            => $billingCycle,
+            'status'                   => 'active',
+            'stripe_subscription_id'   => $stripeSubId,
+            'stripe_customer_id'       => $stripeCusId,
             'stripe_payment_intent_id' => null,
-            'stripe_invoice_id'      => $stripeInvoiceId ?: null,
-            'stripe_price_id_used'   => $stripePriceId,
-            'period_start'           => $periodStart,
-            'period_end'             => $periodEnd,
-            'cancelled_at'           => null,
-            'cancel_at_period_end'   => 0,
-            'timecreated'            => $now,
-            'timemodified'           => $now,
+            'stripe_invoice_id'        => $stripeInvoiceId ?: null,
+            'stripe_price_id_used'     => $stripePriceId,
+            'period_start'             => $periodStart,
+            'period_end'               => $periodEnd,
+            'cancelled_at'             => null,
+            'cancel_at_period_end'     => 0,
+            'plan_profile_field_option' => $planProfileFieldOption,
+            'timecreated'              => $now,
+            'timemodified'             => $now,
         ];
 
         $newId = $DB->insert_record('enrol_mentorsub_subscriptions', $record);
 
         // Enrol the mentor in all subscription-gated courses.
         (new \enrol_mentorsubscription\mentorship\enrolment_sync())->enrol_mentor($userid);
+
+        // Sync plan profile field on the user's profile.
+        if ($planProfileFieldOption !== null && $planProfileFieldOption !== '') {
+            (new \enrol_mentorsubscription\mentorship\role_manager())
+                ->sync_plan_profile_to_user($userid, $planProfileFieldOption);
+        }
 
         // Notify mentor that their subscription is now active.
         (new \enrol_mentorsubscription\notification_manager())->notify_subscription_activated($userid);
@@ -202,12 +210,20 @@ class subscription_manager {
                 'period_end'               => $newData['period_end'],
                 'cancelled_at'             => null,
                 'cancel_at_period_end'     => 0,
+                'plan_profile_field_option' => $newData['plan_profile_field_option'] ?? null,
                 'timecreated'              => $now,
                 'timemodified'             => $now,
             ];
 
             $newId = $DB->insert_record('enrol_mentorsub_subscriptions', $record);
             $transaction->allow_commit();
+
+            // Sync profile field after successful commit.
+            $planOption = $newData['plan_profile_field_option'] ?? '';
+            if ($planOption !== '') {
+                (new \enrol_mentorsubscription\mentorship\role_manager())
+                    ->sync_plan_profile_to_user((int) $newData['userid'], $planOption);
+            }
 
             return $newId;
 
