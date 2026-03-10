@@ -88,6 +88,7 @@
         <FIELD NAME="period_end"              TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false" COMMENT="Billing period end (Unix)"/>
         <FIELD NAME="cancelled_at"            TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="Cancellation timestamp (if applicable)"/>
         <FIELD NAME="cancel_at_period_end"    TYPE="int"    LENGTH="1"   NOTNULL="true"  SEQUENCE="false" DEFAULT="0" COMMENT="1=cancel at period end without renewal"/>
+        <FIELD NAME="plan_profile_field_option" TYPE="char"  LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Snapshot of sub_type plan_profile_field_option at purchase time"/>
         <FIELD NAME="timecreated"             TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
         <FIELD NAME="timemodified"            TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
       </FIELDS>
@@ -166,6 +167,7 @@
         <FIELD NAME="amount"           TYPE="number" LENGTH="10"  NOTNULL="true"  SEQUENCE="false" DECIMALS="2" COMMENT="Resolved price snapshot at time of order"/>
         <FIELD NAME="status"           TYPE="char"   LENGTH="20"  NOTNULL="true"  SEQUENCE="false" DEFAULT="pending" COMMENT="pending|completed|cancelled"/>
         <FIELD NAME="subscriptionid"   TYPE="int"    LENGTH="10"  NOTNULL="false" SEQUENCE="false" COMMENT="Linked subscription record — set by webhook after payment confirmed"/>
+        <FIELD NAME="plan_profile_field_option" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Snapshot of sub_type plan_profile_field_option at order creation time"/>
         <FIELD NAME="timecreated"      TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
         <FIELD NAME="timemodified"     TYPE="int"    LENGTH="10"  NOTNULL="true"  SEQUENCE="false"/>
       </FIELDS>

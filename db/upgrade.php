@@ -92,5 +92,36 @@ function xmldb_enrol_mentorsubscription_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026030901, 'enrol', 'mentorsubscription');
     }
 
+    // -------------------------------------------------------------------------
+    // v2026031002 — add plan_profile_field_option snapshot to subscriptions
+    //               and orders tables
+    // -------------------------------------------------------------------------
+    if ($oldversion < 2026031002) {
+
+        $optionField = new xmldb_field(
+            'plan_profile_field_option',
+            XMLDB_TYPE_CHAR,
+            '255',
+            null,
+            false,
+            null,
+            null
+        );
+
+        // Add to enrol_mentorsub_subscriptions.
+        $subsTable = new xmldb_table('enrol_mentorsub_subscriptions');
+        if (!$dbman->field_exists($subsTable, $optionField)) {
+            $dbman->add_field($subsTable, $optionField);
+        }
+
+        // Add to enrol_mentorsub_orders.
+        $ordersTable = new xmldb_table('enrol_mentorsub_orders');
+        if (!$dbman->field_exists($ordersTable, $optionField)) {
+            $dbman->add_field($ordersTable, $optionField);
+        }
+
+        upgrade_plugin_savepoint(true, 2026031002, 'enrol', 'mentorsubscription');
+    }
+
     return true;
 }
