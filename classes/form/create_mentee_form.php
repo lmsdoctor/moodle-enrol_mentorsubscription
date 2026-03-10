@@ -32,6 +32,8 @@ namespace enrol_mentorsubscription\form;
 
 defined('MOODLE_INTERNAL') || die();
 
+use core_user;
+
 require_once($CFG->libdir . '/formslib.php');
 
 /**
@@ -64,6 +66,36 @@ class create_mentee_form extends \moodleform {
         $mform->addRule('email', get_string('missingemail'), 'required', null, 'client');
         $mform->addRule('email', get_string('invalidemail'), 'email', null, 'client');
 
+        // ---------- Password mode toggle ---------------------------------
+        $mform->addElement('checkbox', 'set_password',
+            get_string('mentee_create_set_password', 'enrol_mentorsubscription'));
+        $mform->setDefault('set_password', 1);
+
+        // Info alert: shown when checkbox IS checked.
+        $mform->addElement('static', 'alert_set_password', '',
+            '<div class="alert alert-info py-2 small my-2">' .
+            get_string('mentee_create_alert_set_password', 'enrol_mentorsubscription') .
+            '</div>');
+
+        // Password policy hint + password field (hidden when checkbox unchecked).
+        if (!empty($CFG->passwordpolicy)) {
+            $mform->addElement('static', 'passwordpolicyinfo', '', print_password_policy());
+        }
+        $mform->addElement('password', 'password', get_string('password'), [
+            'maxlength' => MAX_PASSWORD_CHARACTERS,
+            'size' => 12,
+            'autocomplete' => 'new-password'
+        ]);
+        $mform->setType('password', core_user::get_property_type('password'));
+        $mform->addRule('password', get_string('maximumchars', '', MAX_PASSWORD_CHARACTERS),
+            'maxlength', MAX_PASSWORD_CHARACTERS, 'client');
+
+        // Warning alert: shown when checkbox is NOT checked.
+        $mform->addElement('static', 'alert_auto_password', '',
+            '<div class="alert alert-warning py-2 small my-2">' .
+            get_string('mentee_create_alert_auto_password', 'enrol_mentorsubscription') .
+            '</div>');
+
         // ---------- City / Country (optional, pre-filled from mentor) ----
         $mform->addElement('text', 'city', get_string('city'), 'maxlength="120" size="20"');
         $mform->setType('city', core_user::get_property_type('city'));
@@ -82,17 +114,17 @@ class create_mentee_form extends \moodleform {
             $mform->setType('departmentid', PARAM_INT);
         }
 
-        // ---------- Password note ----------------------------------------
-        $mform->addElement('html',
-            '<div class="alert alert-info py-2 small my-2">' .
-            get_string('mentee_create_password_note', 'enrol_mentorsubscription') .
-            '</div>');
-
         // ---------- Submit / Cancel --------------------------------------
         $this->add_action_buttons(
             true,
             get_string('mentee_create_submit', 'enrol_mentorsubscription')
         );
+
+        // ---------- Conditional visibility -------------------------------
+        $mform->hideIf('alert_set_password',  'set_password', 'notchecked');
+        $mform->hideIf('passwordpolicyinfo',  'set_password', 'notchecked');
+        $mform->hideIf('password',            'set_password', 'notchecked');
+        $mform->hideIf('alert_auto_password', 'set_password', 'checked');
     }
 
     /**
@@ -124,6 +156,19 @@ class create_mentee_form extends \moodleform {
         } elseif ($email !== '' && $DB->record_exists_select(
                 'user', 'LOWER(email) = LOWER(:email) AND deleted = 0', ['email' => $email])) {
             $errors['email'] = get_string('mentee_create_email_exists', 'enrol_mentorsubscription');
+        }
+
+        // When manual password mode is selected, the field is required and must meet policy.
+        if (!empty($data['set_password'])) {
+            $password = $data['password'] ?? '';
+            if ($password === '') {
+                $errors['password'] = get_string('missingpassword');
+            } else {
+                $errmsg = '';
+                if (!check_password_policy($password, $errmsg)) {
+                    $errors['password'] = $errmsg;
+                }
+            }
         }
 
         return $errors;

@@ -297,8 +297,14 @@ class mentorship_manager {
         $newuser = $DB->get_record('user', ['id' => $newuser->id], '*', MUST_EXIST);
 
         // Auto-generate a temporary password and e-mail it to the new user.
-        setnew_password_and_mail($newuser);
-        unset_user_preference('create_password', $newuser);
+        if (!empty($data->set_password) && isset($data->password) && $data->password !== '') {
+            // Manual password supplied via form — set it directly.
+            update_internal_user_password($newuser, $data->password);
+        } else {
+            // No password provided — auto-generate and email credentials to the user.
+            setnew_password_and_mail($newuser);
+            unset_user_preference('create_password', $newuser);
+        }
 
         // --- IOMAD: assign to company if the form provided one. ----------
         if (!empty($data->companyid)) {
