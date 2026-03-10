@@ -71,6 +71,7 @@ class admin_subscription_panel implements renderable, templatable {
                 'id'               => $type->id,
                 'name'             => format_string($type->name),
                 'billing_cycle'    => $type->billing_cycle,
+                'type'             => $type->plan_profile_field_option ?? '-',
                 'price'            => number_format((float) $type->price, 2),
                 'max_mentees'      => $type->default_max_mentees,
                 'stripe_price_id'  => $type->stripe_price_id,
@@ -89,6 +90,7 @@ class admin_subscription_panel implements renderable, templatable {
                 'userid'         => $sub->userid,
                 'subtypeid'      => $sub->subtypeid,
                 'fullname'       => fullname($sub),
+                'type'           => $sub->plan_profile_field_option ?? '-',
                 'status'         => $sub->status,
                 'status_label'     => get_string(
                                          'status_' . str_replace('_', '', $sub->status),

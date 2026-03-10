@@ -157,7 +157,8 @@
                         <tr>
                             <th>{{#str}} dashboard_billing_date, enrol_mentorsubscription {{/str}}</th>
                             <th>{{#str}} dashboard_plan, enrol_mentorsubscription {{/str}}</th>
-                            <th>{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</th>
+                            <th>{{#str}} subtype_type, enrol_mentorsubscription {{/str}}</th>
+                            <!-- <th>{{#str}} dashboard_price, enrol_mentorsubscription {{/str}}</th> -->
                             <th>{{#str}} dashboard_activated, enrol_mentorsubscription {{/str}}</th>
                             <th>{{#str}} dashboard_expires, enrol_mentorsubscription {{/str}}</th>
                             <th>{{#str}} dashboard_invoice, enrol_mentorsubscription {{/str}}</th>
@@ -168,8 +169,12 @@
                         {{#history}}
                         <tr>
                             <td>{{timecreated}}</td>
-                            <td>{{billing_cycle}}</td>
-                            <td>${{billed_price}}</td>
+                            <td>
+                                <strong class="d-block">{{billing_cycle}}</strong>
+                                ${{billed_price}}
+                            </td>
+                            <td>{{type}}</td>
+                            <!-- <td>${{billed_price}}</td> -->
                             <td>{{period_start}}</td>
                             <td>{{period_end}}</td>
                             <td><small class="text-muted">{{stripe_invoice_id}}</small></td>

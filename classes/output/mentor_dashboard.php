@@ -157,14 +157,15 @@ class mentor_dashboard implements \renderable, \templatable {
                                          'status_' . str_replace('_', '', $record->status),
                                          'enrol_mentorsubscription'
                                       ),
-                'billing_cycle'    => $record->billing_cycle,
-                'billed_price'     => number_format((float) $record->billed_price, 2),
-                'period_start'     => $this->fmtdate((int) $record->period_start),
-                'period_end'       => $this->fmtdate((int) $record->period_end),
+                'type'              => $record->plan_profile_field_option ?? '-',
+                'billing_cycle'     => $record->billing_cycle,
+                'billed_price'      => number_format((float) $record->billed_price, 2),
+                'period_start'      => $this->fmtdate((int) $record->period_start),
+                'period_end'        => $this->fmtdate((int) $record->period_end),
                 'stripe_invoice_id' => $record->stripe_invoice_id ?? '—',
-                'timecreated'      => $this->fmtdate((int) $record->timecreated),
-                'is_active'        => $record->status === 'active',
-                'is_expired'       => in_array($record->status, ['expired', 'cancelled', 'superseded']),
+                'timecreated'       => $this->fmtdate((int) $record->timecreated),
+                'is_active'         => $record->status === 'active',
+                'is_expired'        => in_array($record->status, ['expired', 'cancelled', 'superseded']),
             ];
         }
         $ctx['has_history'] = !empty($ctx['history']);

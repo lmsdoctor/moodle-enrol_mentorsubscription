@@ -32,7 +32,7 @@
                         <th>{{#str}} subtype_billing_cycle, enrol_mentorsubscription {{/str}}</th>
                         <th>{{#str}} subtype_price, enrol_mentorsubscription {{/str}}</th>
                         <th>{{#str}} subtype_max_mentees, enrol_mentorsubscription {{/str}}</th>
-                        <th>Stripe Price ID</th>
+                        <th>{{#str}} subtype_stripe_price_id, enrol_mentorsubscription {{/str}}</th>
                         <th>{{#str}} subtype_is_active, enrol_mentorsubscription {{/str}}</th>
                         <th></th>
                     </tr>
@@ -41,7 +41,10 @@
                     {{#subtypes}}
                     <tr>
                         <td>{{name}}</td>
-                        <td>{{billing_cycle}}</td>
+                        <td>
+                        {{billing_cycle}}
+                        <strong>${{price}}</strong>
+                        </td>
                         <td>${{price}}</td>
                         <td>{{max_mentees}}</td>
                         <td><code>{{stripe_price_id}}</code></td>
