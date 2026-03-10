@@ -64,10 +64,28 @@ class sub_type_form extends \moodleform {
         $cycles = [
             'monthly' => get_string('billing_monthly', 'enrol_mentorsubscription'),
             'annual'  => get_string('billing_annual',  'enrol_mentorsubscription'),
-        ];
+            ];
         $mform->addElement('select', 'billing_cycle',
             get_string('subtype_billing_cycle', 'enrol_mentorsubscription'), $cycles);
         $mform->addRule('billing_cycle', null, 'required', null, 'client');
+
+        // ── Subscription Profile - Custom profile fields ────────────────────────────────────────────────────
+        // Only shown when the admin has enabled the plan profile field feature
+        // AND has defined at least one option in the plugin settings.
+        $planProfileEnabled = (bool) get_config('enrol_mentorsubscription', 'enable_plan_profile_field');
+        $rawPlanOptions     = (string) get_config('enrol_mentorsubscription', 'plan_profile_field_options');
+        $planOptions        = $planProfileEnabled
+            ? array_values(array_filter(array_map('trim', explode("\n", $rawPlanOptions))))
+            : [];
+
+        if ($planProfileEnabled && !empty($planOptions)) {
+            $selectOptions = ['' => get_string('choosedots')] + array_combine($planOptions, $planOptions);
+            $mform->addElement('select', 'plan_profile_field_option',
+                get_string('subtype_profile', 'enrol_mentorsubscription'), $selectOptions);
+            $mform->setType('plan_profile_field_option', PARAM_TEXT);
+            $mform->setDefault('plan_profile_field_option', '');
+            $mform->addRule('plan_profile_field_option', get_string('required'), 'required', null, 'client');
+        }
 
         // ── Price ────────────────────────────────────────────────────────────
         $mform->addElement('text', 'price',
@@ -83,11 +101,11 @@ class sub_type_form extends \moodleform {
         $mform->setDefault('default_max_mentees', 10);
         
         // ── Stripe Product ID ─────────────────────────────────────────────────
-        $mform->addElement('text', 'stripe_product_id',
-            get_string('subtype_stripe_product_id', 'enrol_mentorsubscription'), ['size' => 60]);
-        $mform->setType('stripe_product_id', PARAM_TEXT);
-        $mform->addRule('stripe_product_id', null, 'required', null, 'client');
-        $mform->addHelpButton('stripe_product_id', 'subtype_stripe_product_id', 'enrol_mentorsubscription');
+        // $mform->addElement('text', 'stripe_product_id',
+        //     get_string('subtype_stripe_product_id', 'enrol_mentorsubscription'), ['size' => 60]);
+        // $mform->setType('stripe_product_id', PARAM_TEXT);
+        // $mform->addRule('stripe_product_id', null, 'required', null, 'client');
+        // $mform->addHelpButton('stripe_product_id', 'subtype_stripe_product_id', 'enrol_mentorsubscription');
 
         // ── Stripe Price ID ──────────────────────────────────────────────────
         $mform->addElement('text', 'stripe_price_id',
@@ -131,6 +149,21 @@ class sub_type_form extends \moodleform {
         }
         if (!empty($data['default_max_mentees']) && (int)$data['default_max_mentees'] < 1) {
             $errors['default_max_mentees'] = get_string('subtype_error_max_mentees', 'enrol_mentorsubscription');
+        }
+
+        // Validate plan profile field selection when the feature is enabled.
+        $planProfileEnabled = (bool) get_config('enrol_mentorsubscription', 'enable_plan_profile_field');
+        $rawPlanOptions     = (string) get_config('enrol_mentorsubscription', 'plan_profile_field_options');
+        $planOptions        = $planProfileEnabled
+            ? array_values(array_filter(array_map('trim', explode("\n", $rawPlanOptions))))
+            : [];
+
+        if ($planProfileEnabled && !empty($planOptions)) {
+            if (empty($data['plan_profile_field_option'])) {
+                $errors['plan_profile_field_option'] = get_string('subtype_error_plan_profile', 'enrol_mentorsubscription');
+            } elseif (!in_array($data['plan_profile_field_option'], $planOptions, true)) {
+                $errors['plan_profile_field_option'] = get_string('subtype_error_plan_profile_invalid', 'enrol_mentorsubscription');
+            }
         }
 
         return $errors;
